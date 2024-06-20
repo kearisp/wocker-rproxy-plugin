@@ -1,0 +1,34 @@
+# Misc
+.idea/
+.vscode/
+/.eslintcache
+.DS_Store
+
+# Build configs
+/.env
+
+# Builds
+/lib
+
+# Dependency directories
+/node_modules
+jspm_packages/
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
