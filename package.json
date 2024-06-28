@@ -1,0 +1,37 @@
+{
+    "name": "@wocker/rproxy-plugin",
+    "version": "1.0.0",
+    "author": "Kris Papercut <krispcut@gmail.com>",
+    "description": "Wocker reverse proxy plugin",
+    "license": "MIT",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "homepage": "https://kearisp.github.io/wocker/plugins/rproxy",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kearisp/wocker-rproxy-plugin.git"
+    },
+    "bugs": {
+        "url": "https://github.com/kearisp/wocker-rproxy-plugin/issues"
+    },
+    "keywords": [
+        "wocker",
+        "wocker-plugin"
+    ],
+    "scripts": {
+        "prepare": "npm run build",
+        "watch": "tsc -w",
+        "build": "tsc",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "@wocker/core": "^1.0.11",
+        "@wocker/utils": "^1.0.0",
+        "fs": "^0.0.1-security",
+        "path": "^0.12.7"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.19",
+        "typescript": "^5.4.3"
+    }
+}
