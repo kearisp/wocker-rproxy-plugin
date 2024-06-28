@@ -1,4 +1,4 @@
-# @wocker/reverse-proxy-plugin
+# @wocker/rproxy-plugin
 
 ###### Docker workspace for web projects
 
@@ -11,7 +11,7 @@ npm i -g @wocker/ws
 ```
 
 ```shell
-ws plugin:add reverse-proxy
+ws plugin:add rproxy
 ```
 
 
