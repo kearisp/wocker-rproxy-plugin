@@ -77,7 +77,7 @@ export class LocalTunnelService {
             const link: string = await new Promise((resolve, reject) => {
                 let res = "";
 
-                stream.on("data", (data) => {
+                stream.on("data", (data: any) => {
                     const regLink = /(https?):\/\/(\w[\w.-]+[a-z]|\d+\.\d+\.\d+\.\d+)(?::(\d+))?/;
 
                     if(regLink.test(data.toString())) {
@@ -151,11 +151,11 @@ export class LocalTunnelService {
             tail: 5
         });
 
-        stream.on("data", (data) => {
+        stream.on("data", (data: any) => {
             process.stdout.write(data);
         });
 
-        stream.on("error", (data) => {
+        stream.on("error", (data: any) => {
             process.stderr.write(data);
         });
     }
