@@ -3,14 +3,16 @@ import {promptConfirm, promptSelect} from "@wocker/utils";
 
 import {NgrokService} from "./NgrokService";
 import {ServeoService} from "./ServeoService";
-import {PROXY_ENABLE_KEY, PROXY_TYPE_KEY} from "../env";
+import {LocalTunnelService} from "./LocalTunnelService";
+import {PROXY_TYPE_KEY} from "../env";
 
 
 @Injectable()
 export class ReverseProxyService {
     public constructor(
         protected readonly ngrokService: NgrokService,
-        protected readonly serveoService: ServeoService
+        protected readonly serveoService: ServeoService,
+        protected readonly localTunnelService: LocalTunnelService
     ) {}
 
     public async onStart(project: Project): Promise<void> {
@@ -47,7 +49,8 @@ export class ReverseProxyService {
             message: "Reverse proxy:",
             options: [
                 {label: "Ngrok", value: "ngrok"},
-                {label: "Serveo", value: "serveo"}
+                {label: "Serveo", value: "serveo"},
+                {label: "LocalTunnel", value: "localtunnel"}
             ],
             default: project.getMeta(PROXY_TYPE_KEY)
         });
@@ -61,6 +64,10 @@ export class ReverseProxyService {
 
             case "serveo":
                 await this.serveoService.init(project);
+                break;
+
+            case "localtunnel":
+                await this.localTunnelService.init(project);
                 break;
         }
 
@@ -78,6 +85,10 @@ export class ReverseProxyService {
             case "serveo":
                 await this.serveoService.start(project, restart);
                 break;
+
+            case "localtunnel":
+                await this.localTunnelService.start(project, restart);
+                break;
         }
     }
 
@@ -92,6 +103,10 @@ export class ReverseProxyService {
             case "serveo":
                 await this.serveoService.stop(project);
                 break;
+
+            case "localtunnel":
+                await this.localTunnelService.stop(project);
+                break;
         }
     }
 
@@ -104,6 +119,10 @@ export class ReverseProxyService {
             case "serveo":
                 await this.serveoService.build(project, rebuild);
                 break;
+
+            case "localtunnel":
+                await this.localTunnelService.build(project, rebuild);
+                break;
         }
     }
 
@@ -115,6 +134,10 @@ export class ReverseProxyService {
 
             case "serveo":
                 await this.serveoService.logs(project);
+                break;
+
+            case "localtunnel":
+                await this.localTunnelService.logs(project);
                 break;
         }
     }
