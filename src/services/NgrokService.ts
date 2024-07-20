@@ -93,7 +93,6 @@ export class NgrokService {
                         const [link = ""] = regLink.exec(data.toString()) || [];
 
                         if(link.includes(".ngrok")) {
-                            // this.logService.info(`${project.name} forwarding: ${link}`);
                             console.info(`Forwarding: ${link}`);
 
                             stream.end();
