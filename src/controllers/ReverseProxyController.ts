@@ -6,18 +6,14 @@ import {
     ProjectService
 } from "@wocker/core";
 
-import {NgrokService} from "../services/NgrokService";
 import {ReverseProxyService} from "../services/ReverseProxyService";
-import {ServeoService} from "../services/ServeoService";
 
 
 @Controller()
 export class ReverseProxyController {
     public constructor(
         protected readonly appEventsService: AppEventsService,
-        protected readonly ngrokService: NgrokService,
         protected readonly reverseProxyService: ReverseProxyService,
-        protected readonly serveoService: ServeoService,
         protected readonly projectService: ProjectService
     ) {
         this.appEventsService.on("project:start", (project) => {
