@@ -4,7 +4,12 @@ import {promptConfirm, promptSelect} from "@wocker/utils";
 import {NgrokService} from "./NgrokService";
 import {ServeoService} from "./ServeoService";
 import {LocalTunnelService} from "./LocalTunnelService";
-import {PROXY_TYPE_KEY} from "../env";
+import {
+    PROXY_TYPE_KEY,
+    TYPE_SERVEO,
+    TYPE_NGROK,
+    TYPE_LT
+} from "../env";
 
 
 @Injectable()
@@ -48,9 +53,9 @@ export class ReverseProxyService {
         const proxyName = await promptSelect({
             message: "Reverse proxy:",
             options: [
-                {label: "Ngrok", value: "ngrok"},
-                {label: "Serveo", value: "serveo"},
-                {label: "LocalTunnel", value: "localtunnel"}
+                {label: "Ngrok", value: TYPE_NGROK},
+                {label: "Serveo", value: TYPE_SERVEO},
+                {label: "LocalTunnel", value: TYPE_LT}
             ],
             default: project.getMeta(PROXY_TYPE_KEY)
         });
@@ -58,15 +63,15 @@ export class ReverseProxyService {
         project.setMeta(PROXY_TYPE_KEY, proxyName);
 
         switch(proxyName) {
-            case "ngrok":
+            case TYPE_NGROK:
                 await this.ngrokService.init(project);
                 break;
 
-            case "serveo":
+            case TYPE_SERVEO:
                 await this.serveoService.init(project);
                 break;
 
-            case "localtunnel":
+            case TYPE_LT:
                 await this.localTunnelService.init(project);
                 break;
         }
@@ -74,19 +79,19 @@ export class ReverseProxyService {
         await project.save();
     }
 
-    public async start(project: Project, restart?: boolean): Promise<void> {
+    public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
         console.info("Starting reverse proxy...");
 
         switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case "ngrok":
+            case TYPE_NGROK:
                 await this.ngrokService.start(project, restart);
                 break;
 
-            case "serveo":
-                await this.serveoService.start(project, restart);
+            case TYPE_SERVEO:
+                await this.serveoService.start(project, restart, rebuild);
                 break;
 
-            case "localtunnel":
+            case TYPE_LT:
                 await this.localTunnelService.start(project, restart);
                 break;
         }
@@ -96,15 +101,15 @@ export class ReverseProxyService {
         console.info("Stopping reverse proxy...");
 
         switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case "ngrok":
+            case TYPE_NGROK:
                 await this.ngrokService.stop(project);
                 break;
 
-            case "serveo":
+            case TYPE_SERVEO:
                 await this.serveoService.stop(project);
                 break;
 
-            case "localtunnel":
+            case TYPE_LT:
                 await this.localTunnelService.stop(project);
                 break;
         }
@@ -112,15 +117,15 @@ export class ReverseProxyService {
 
     public async build(project: Project, rebuild?: boolean): Promise<void> {
         switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case "ngrok":
+            case TYPE_NGROK:
                 await this.ngrokService.build(rebuild);
                 break;
 
-            case "serveo":
+            case TYPE_SERVEO:
                 await this.serveoService.build(project, rebuild);
                 break;
 
-            case "localtunnel":
+            case TYPE_LT:
                 await this.localTunnelService.build(project, rebuild);
                 break;
         }
@@ -128,15 +133,15 @@ export class ReverseProxyService {
 
     public async logs(project: Project): Promise<void> {
         switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case "ngrok":
+            case TYPE_NGROK:
                 await this.ngrokService.logs(project);
                 break;
 
-            case "serveo":
+            case TYPE_SERVEO:
                 await this.serveoService.logs(project);
                 break;
 
-            case "localtunnel":
+            case TYPE_LT:
                 await this.localTunnelService.logs(project);
                 break;
         }

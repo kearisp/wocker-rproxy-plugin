@@ -31,20 +31,22 @@ export class ServeoService {
         project.setMeta(SERVEO_SUBDOMAIN_KEY, subdomain);
     }
 
-    public async start(project: Project, restart?: boolean): Promise<void> {
-        if(restart) {
+    public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
+        if(restart || rebuild) {
             await this.stop(project);
+        }
+
+        if(rebuild) {
+            await this.build(project, rebuild);
         }
 
         let container = await this.dockerService.getContainer(`serveo-${project.id}`);
 
         if(!container) {
-            const sshDir = this.pluginConfigService.dataPath(".ssh");
-
             if(!this.pluginConfigService.exists(".ssh")) {
                 await this.pluginConfigService.mkdir(".ssh", {
                     recursive: true,
-                    mode: 644
+                    mode: 0o700
                 });
             }
 
@@ -54,7 +56,7 @@ export class ServeoService {
                 tty: true,
                 restart: "always",
                 volumes: [
-                    `${sshDir}:/home/${this.user}/.ssh:rw`
+                    `${this.pluginConfigService.dataPath(".ssh")}:/home/${this.user}/.ssh:rw`
                 ],
                 env: {
                     SUBDOMAIN: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
@@ -71,6 +73,14 @@ export class ServeoService {
 
         if(!Running) {
             await container.start();
+
+            const stream = await this.dockerService.attach(container);
+
+            stream.on("data", (data: Buffer): void => {
+                if(/Forwarding HTTP traffic/.test(data.toString())) {
+                    stream.end();
+                }
+            });
         }
     }
 
