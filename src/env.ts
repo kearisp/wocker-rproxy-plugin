@@ -1,3 +1,6 @@
+export const TYPE_SERVEO = "serveo";
+export const TYPE_NGROK = "ngrok";
+export const TYPE_LT = "local-tunnel";
 export const PROXY_ENABLE_KEY = "REVERSE_PROXY_ENABLE";
 export const PROXY_TYPE_KEY = "REVERSE_PROXY";
 export const SERVEO_SUBDOMAIN_KEY = "SERVEO_SUBDOMAIN";

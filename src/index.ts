@@ -1,8 +1,8 @@
 import {Plugin, PluginConfigService} from "@wocker/core";
 
 import {ReverseProxyController} from "./controllers/ReverseProxyController";
-import {NgrokService} from "./services/NgrokService";
 import {ReverseProxyService} from "./services/ReverseProxyService";
+import {NgrokService} from "./services/NgrokService";
 import {ServeoService} from "./services/ServeoService";
 import {LocalTunnelService} from "./services/LocalTunnelService";
 
@@ -13,11 +13,11 @@ import {LocalTunnelService} from "./services/LocalTunnelService";
         ReverseProxyController
     ],
     providers: [
-        NgrokService,
+        PluginConfigService,
         ReverseProxyService,
+        NgrokService,
         ServeoService,
-        LocalTunnelService,
-        PluginConfigService
+        LocalTunnelService
     ]
 })
 export default class ReverseProxyPlugin {}

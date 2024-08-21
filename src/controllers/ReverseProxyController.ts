@@ -1,5 +1,6 @@
 import {
     Controller,
+    Project,
     Command,
     Option,
     AppEventsService,
@@ -16,11 +17,15 @@ export class ReverseProxyController {
         protected readonly reverseProxyService: ReverseProxyService,
         protected readonly projectService: ProjectService
     ) {
-        this.appEventsService.on("project:start", (project) => {
+        this.appEventsService.on("project:init", (project: Project): Promise<void> => {
+            return this.reverseProxyService.init(project);
+        });
+
+        this.appEventsService.on("project:start", (project: Project): Promise<void> => {
             return this.reverseProxyService.onStart(project);
         });
 
-        this.appEventsService.on("project:stop", (project) => {
+        this.appEventsService.on("project:stop", (project: Project): Promise<void> => {
             return this.reverseProxyService.onStop(project);
         });
     }
@@ -30,7 +35,7 @@ export class ReverseProxyController {
         @Option("name", {
             type: "string",
             alias: "n",
-            description: "Project name"
+            description: "The name of the project"
         })
         name?: string
     ): Promise<void> {
@@ -48,7 +53,7 @@ export class ReverseProxyController {
         @Option("name", {
             type: "string",
             alias: "n",
-            description: "Project name"
+            description: "The name of the project"
         })
         name?: string,
         @Option("restart", {
@@ -70,8 +75,7 @@ export class ReverseProxyController {
 
         const project = await this.projectService.get();
 
-        await this.reverseProxyService.build(project, build);
-        await this.reverseProxyService.start(project, restart);
+        await this.reverseProxyService.start(project, restart, build);
     }
 
     @Command("rproxy:stop")
@@ -79,7 +83,7 @@ export class ReverseProxyController {
         @Option("name", {
             type: "string",
             alias: "n",
-            description: "Project name"
+            description: "The name of the project"
         })
         name?: string
     ): Promise<void> {
@@ -97,7 +101,7 @@ export class ReverseProxyController {
         @Option("name", {
             type: "string",
             alias: "n",
-            description: "Project name"
+            description: "The name of the project"
         })
         name?: string
     ): Promise<void> {
