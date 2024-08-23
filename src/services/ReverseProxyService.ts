@@ -4,11 +4,13 @@ import {ProxyProvider} from "../types/ProxyProvider";
 import {NgrokService} from "../providers/NgrokService";
 import {ServeoService} from "../providers/ServeoService";
 import {LocalTunnelService} from "../providers/LocalTunnelService";
+import {PageKiteService} from "../providers/PageKiteService";
 import {
     PROXY_TYPE_KEY,
     TYPE_SERVEO,
     TYPE_NGROK,
-    TYPE_LT
+    TYPE_LT,
+    TYPE_PAGE_KITE
 } from "../env";
 
 
@@ -17,7 +19,8 @@ export class ReverseProxyService {
     public constructor(
         protected readonly ngrokService: NgrokService,
         protected readonly serveoService: ServeoService,
-        protected readonly localTunnelService: LocalTunnelService
+        protected readonly localTunnelService: LocalTunnelService,
+        protected readonly pageKiteService: PageKiteService
     ) {}
 
     public getProvider(type: string): ProxyProvider {
@@ -30,6 +33,9 @@ export class ReverseProxyService {
 
             case TYPE_NGROK:
                 return this.ngrokService;
+
+            case TYPE_PAGE_KITE:
+                return this.pageKiteService;
 
             default:
                 throw new Error(`Reverse proxy provider "${type}" not found.`);
@@ -72,7 +78,8 @@ export class ReverseProxyService {
             options: [
                 {label: "Ngrok", value: TYPE_NGROK},
                 {label: "Serveo", value: TYPE_SERVEO},
-                {label: "LocalTunnel", value: TYPE_LT}
+                {label: "LocalTunnel", value: TYPE_LT},
+                {label: "PageKite", value: TYPE_PAGE_KITE}
             ],
             default: project.getMeta(PROXY_TYPE_KEY)
         });

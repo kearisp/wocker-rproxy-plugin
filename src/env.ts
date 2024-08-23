@@ -1,9 +1,12 @@
 export const TYPE_SERVEO = "serveo";
 export const TYPE_NGROK = "ngrok";
 export const TYPE_LT = "local-tunnel";
+export const TYPE_PAGE_KITE = "page-kite";
+export const PROXY_ENABLE_KEY = "REVERSE_PROXY_ENABLE";
 export const PROXY_TYPE_KEY = "REVERSE_PROXY";
 export const SERVEO_SUBDOMAIN_KEY = "SERVEO_SUBDOMAIN";
 export const NGROK_TOKEN_KEY = "NGROK_AUTHTOKEN";
 export const NGROK_SUBDOMAIN_KEY = "NGROK_SUBDOMAIN";
 export const LT_SUBDOMAIN_KEY = "LOCALTUNNEL_SUBDOMAIN";
 export const LT_AUTO_CONFIRM_KEY = "LOCALTUNNEL_AUTO_CONFIRM";
+export const PAGE_KITE_SUBDOMAIN_KEY = "PAGE_KITE_SUBDOMAIN";

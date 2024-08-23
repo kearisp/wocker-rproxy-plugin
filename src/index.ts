@@ -3,6 +3,7 @@ import {ReverseProxyController} from "./controllers/ReverseProxyController";
 import {ReverseProxyService} from "./services/ReverseProxyService";
 import {LocalTunnelService} from "./providers/LocalTunnelService";
 import {NgrokService} from "./providers/NgrokService";
+import {PageKiteService} from "./providers/PageKiteService";
 import {ServeoService} from "./providers/ServeoService";
 
 
@@ -15,6 +16,7 @@ import {ServeoService} from "./providers/ServeoService";
         PluginConfigService,
         ReverseProxyService,
         NgrokService,
+        PageKiteService,
         ServeoService,
         LocalTunnelService
     ]
