@@ -3,14 +3,15 @@ import {promptText, promptConfirm} from "@wocker/utils";
 import axios from "axios";
 import * as Path from "path";
 
+import {ProxyProvider} from "../types/ProxyProvider";
 import {
-    LOCALTUNNEL_SUBDOMAIN_KEY,
-    LOCALTUNNEL_AUTO_CONFIRM_KEY
+    LT_SUBDOMAIN_KEY,
+    LT_AUTO_CONFIRM_KEY
 } from "../env";
 
 
 @Injectable()
-export class LocalTunnelService {
+export class LocalTunnelService implements ProxyProvider {
     protected readonly imageName = "ws-localtunnel";
 
     public constructor(
@@ -23,16 +24,16 @@ export class LocalTunnelService {
             message: "Subdomain: ",
             prefix: "https://",
             suffix: ".loca.lt",
-            default: project.getMeta(LOCALTUNNEL_SUBDOMAIN_KEY, project.name)
+            default: project.getMeta(LT_SUBDOMAIN_KEY, project.name)
         });
 
         const autoConfirmIP = await promptConfirm({
             message: "Do you want to skip the IP confirmation form automatically?",
-            default: project.getEnv(LOCALTUNNEL_AUTO_CONFIRM_KEY, "true") === "true"
+            default: project.getEnv(LT_AUTO_CONFIRM_KEY, "true") === "true"
         });
 
-        project.setMeta(LOCALTUNNEL_AUTO_CONFIRM_KEY, autoConfirmIP ? "true" : "false");
-        project.setMeta(LOCALTUNNEL_SUBDOMAIN_KEY, subdomain);
+        project.setMeta(LT_AUTO_CONFIRM_KEY, autoConfirmIP ? "true" : "false");
+        project.setMeta(LT_SUBDOMAIN_KEY, subdomain);
     }
 
     public async start(project: Project, restart?: boolean): Promise<void> {
@@ -43,9 +44,9 @@ export class LocalTunnelService {
         let container = await this.dockerService.getContainer(`localtunnel-${project.name}`);
 
         if(!container) {
-            await this.build(project);
+            await this.build();
 
-            const subdomain = project.getMeta(LOCALTUNNEL_SUBDOMAIN_KEY, project.name);
+            const subdomain = project.getMeta(LT_SUBDOMAIN_KEY, project.name);
 
             container = await this.dockerService.createContainer({
                 name: `localtunnel-${project.name}`,
@@ -100,7 +101,7 @@ export class LocalTunnelService {
             console.info(`Forwarding: ${link}`);
             console.info(`IP: ${ip}`);
 
-            if(project.getMeta(LOCALTUNNEL_AUTO_CONFIRM_KEY, "false" as string) === "true") {
+            if(project.getMeta(LT_AUTO_CONFIRM_KEY, "false" as string) === "true") {
                 await this.confirm(link, ip);
             }
         }
@@ -120,13 +121,12 @@ export class LocalTunnelService {
         await this.dockerService.removeContainer(`localtunnel-${project.name}`);
     }
 
-    public async build(project: Project, rebuild: boolean = false): Promise<void> {
+    public async build(rebuild?: boolean): Promise<void> {
         if(await this.dockerService.imageExists(this.imageName)) {
             if(!rebuild) {
                 return;
             }
 
-            await this.stop(project);
             await this.dockerService.imageRm(this.imageName);
         }
 

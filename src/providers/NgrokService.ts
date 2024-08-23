@@ -1,11 +1,12 @@
 import {Injectable, DockerService, Project} from "@wocker/core";
 import {promptConfirm, promptText} from "@wocker/utils";
 
+import {ProxyProvider} from "../types/ProxyProvider";
 import {NGROK_SUBDOMAIN_KEY, NGROK_TOKEN_KEY} from "../env";
 
 
 @Injectable()
-export class NgrokService {
+export class NgrokService implements ProxyProvider {
     public constructor(
         protected readonly dockerService: DockerService
     ) {}

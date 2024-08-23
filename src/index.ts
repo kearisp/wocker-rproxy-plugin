@@ -2,9 +2,9 @@ import {Plugin, PluginConfigService} from "@wocker/core";
 
 import {ReverseProxyController} from "./controllers/ReverseProxyController";
 import {ReverseProxyService} from "./services/ReverseProxyService";
-import {NgrokService} from "./services/NgrokService";
-import {ServeoService} from "./services/ServeoService";
-import {LocalTunnelService} from "./services/LocalTunnelService";
+import {LocalTunnelService} from "./providers/LocalTunnelService";
+import {NgrokService} from "./providers/NgrokService";
+import {ServeoService} from "./providers/ServeoService";
 
 
 @Plugin({

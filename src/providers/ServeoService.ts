@@ -2,11 +2,12 @@ import {Injectable, Project, DockerService, PluginConfigService} from "@wocker/c
 import {promptText} from "@wocker/utils";
 import * as Path from "path";
 
+import {ProxyProvider} from "../types/ProxyProvider";
 import {SERVEO_SUBDOMAIN_KEY} from "../env";
 
 
 @Injectable()
-export class ServeoService {
+export class ServeoService implements ProxyProvider {
     public constructor(
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly dockerService: DockerService
@@ -36,9 +37,7 @@ export class ServeoService {
             await this.stop(project);
         }
 
-        if(rebuild) {
-            await this.build(project, rebuild);
-        }
+        await this.build(rebuild);
 
         let container = await this.dockerService.getContainer(`serveo-${project.id}`);
 
@@ -60,7 +59,8 @@ export class ServeoService {
                 ],
                 env: {
                     SUBDOMAIN: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
-                    CONTAINER: project.containerName
+                    CONTAINER: project.containerName,
+                    PORT: project.getEnv("VIRTUAL_PORT", "80") as string
                 }
             });
         }
@@ -88,13 +88,12 @@ export class ServeoService {
         await this.dockerService.removeContainer(`serveo-${project.id}`);
     }
 
-    public async build(project: Project, rebuild?: boolean): Promise<void> {
+    public async build(rebuild?: boolean): Promise<void> {
         if(await this.dockerService.imageExists(this.imageName)) {
             if(!rebuild) {
                 return;
             }
 
-            await this.stop(project);
             await this.dockerService.imageRm(this.imageName);
         }
 
