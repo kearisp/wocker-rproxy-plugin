@@ -6,6 +6,7 @@ ARG GID=1000
 
 ENV SUBDOMAIN=""
 ENV CONTAINER="default"
+ENV PORT="80"
 
 ADD ./bin/entrypoint.sh /entrypoint.sh
 
@@ -17,4 +18,4 @@ RUN apt-get update && apt-get install -y autossh && \
 USER $USER
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD autossh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -R "${SUBDOMAIN:+$SUBDOMAIN.serveo.net:}80:$CONTAINER:80" serveo.net
+CMD autossh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -R "${SUBDOMAIN:+$SUBDOMAIN.serveo.net:}80:$CONTAINER:$PORT" serveo.net

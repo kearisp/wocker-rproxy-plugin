@@ -1,9 +1,10 @@
 import {Injectable, Project} from "@wocker/core";
 import {promptConfirm, promptSelect} from "@wocker/utils";
 
-import {NgrokService} from "./NgrokService";
-import {ServeoService} from "./ServeoService";
-import {LocalTunnelService} from "./LocalTunnelService";
+import {ProxyProvider} from "../types/ProxyProvider";
+import {NgrokService} from "../providers/NgrokService";
+import {ServeoService} from "../providers/ServeoService";
+import {LocalTunnelService} from "../providers/LocalTunnelService";
 import {
     PROXY_TYPE_KEY,
     TYPE_SERVEO,
@@ -19,6 +20,22 @@ export class ReverseProxyService {
         protected readonly serveoService: ServeoService,
         protected readonly localTunnelService: LocalTunnelService
     ) {}
+
+    public getProvider(type: string): ProxyProvider {
+        switch(type) {
+            case TYPE_LT:
+                return this.localTunnelService;
+
+            case TYPE_SERVEO:
+                return this.serveoService;
+
+            case TYPE_NGROK:
+                return this.ngrokService;
+
+            default:
+                throw new Error(`Reverse proxy provider "${type}" not found.`);
+        }
+    }
 
     public async onStart(project: Project): Promise<void> {
         if(!project || !project.getMeta(PROXY_TYPE_KEY)) {
@@ -60,21 +77,21 @@ export class ReverseProxyService {
             default: project.getMeta(PROXY_TYPE_KEY)
         });
 
+        const provider = this.getProvider(proxyName);
+
+        if(project.getMeta(PROXY_TYPE_KEY)) {
+            try {
+                await this.getProvider(project.getMeta(PROXY_TYPE_KEY))
+                    .stop(project);
+            }
+            catch(err) {
+                console.log(err);
+            }
+        }
+
         project.setMeta(PROXY_TYPE_KEY, proxyName);
 
-        switch(proxyName) {
-            case TYPE_NGROK:
-                await this.ngrokService.init(project);
-                break;
-
-            case TYPE_SERVEO:
-                await this.serveoService.init(project);
-                break;
-
-            case TYPE_LT:
-                await this.localTunnelService.init(project);
-                break;
-        }
+        await provider.init(project);
 
         await project.save();
     }
@@ -82,68 +99,28 @@ export class ReverseProxyService {
     public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
         console.info("Starting reverse proxy...");
 
-        switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case TYPE_NGROK:
-                await this.ngrokService.start(project, restart);
-                break;
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
 
-            case TYPE_SERVEO:
-                await this.serveoService.start(project, restart, rebuild);
-                break;
-
-            case TYPE_LT:
-                await this.localTunnelService.start(project, restart);
-                break;
-        }
+        await provider.start(project, restart, rebuild);
     }
 
     public async stop(project: Project): Promise<void> {
         console.info("Stopping reverse proxy...");
 
-        switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case TYPE_NGROK:
-                await this.ngrokService.stop(project);
-                break;
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
 
-            case TYPE_SERVEO:
-                await this.serveoService.stop(project);
-                break;
-
-            case TYPE_LT:
-                await this.localTunnelService.stop(project);
-                break;
-        }
+        await provider.stop(project);
     }
 
     public async build(project: Project, rebuild?: boolean): Promise<void> {
-        switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case TYPE_NGROK:
-                await this.ngrokService.build(rebuild);
-                break;
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
 
-            case TYPE_SERVEO:
-                await this.serveoService.build(project, rebuild);
-                break;
-
-            case TYPE_LT:
-                await this.localTunnelService.build(project, rebuild);
-                break;
-        }
+        await provider.build(rebuild);
     }
 
     public async logs(project: Project): Promise<void> {
-        switch(project.getMeta(PROXY_TYPE_KEY)) {
-            case TYPE_NGROK:
-                await this.ngrokService.logs(project);
-                break;
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
 
-            case TYPE_SERVEO:
-                await this.serveoService.logs(project);
-                break;
-
-            case TYPE_LT:
-                await this.localTunnelService.logs(project);
-                break;
-        }
+        await provider.logs(project);
     }
 }
