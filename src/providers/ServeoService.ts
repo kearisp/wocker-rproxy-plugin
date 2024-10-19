@@ -107,13 +107,16 @@ export class ServeoService implements ProxyProvider {
             return;
         }
 
+        // @ts-ignore
         const images = await this.dockerService.imageLs({
+            // @ts-ignore
             reference: this.oldImages
         });
 
         for(const image of images) {
             const {Id} = image;
 
+            // @ts-ignore
             await this.dockerService.imageRm(Id, true);
         }
     }
