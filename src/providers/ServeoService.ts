@@ -1,4 +1,10 @@
-import {Injectable, Project, DockerService, PluginConfigService} from "@wocker/core";
+import {
+    Injectable,
+    Project,
+    AppConfigService,
+    DockerService,
+    PluginConfigService
+} from "@wocker/core";
 import {promptText} from "@wocker/utils";
 import * as Path from "path";
 
@@ -9,16 +15,23 @@ import {SERVEO_SUBDOMAIN_KEY} from "../env";
 @Injectable()
 export class ServeoService implements ProxyProvider {
     public constructor(
+        protected readonly appConfigService: AppConfigService,
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly dockerService: DockerService
     ) {}
 
-    get user(): string {
-        return "service";
+    get oldImages(): string[] {
+        return [
+            "wocker-serveo:latest"
+        ];
     }
 
     get imageName(): string {
-        return "wocker-serveo";
+        return "wocker-serveo:2.0.0";
+    }
+
+    get user(): string {
+        return "serveo";
     }
 
     public async init(project: Project): Promise<void> {
@@ -54,14 +67,14 @@ export class ServeoService implements ProxyProvider {
                 image: this.imageName,
                 tty: true,
                 restart: "always",
-                volumes: [
-                    `${this.pluginConfigService.dataPath(".ssh")}:/home/${this.user}/.ssh:rw`
-                ],
                 env: {
                     SUBDOMAIN: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
                     CONTAINER: project.containerName,
                     PORT: project.getEnv("VIRTUAL_PORT", "80") as string
-                }
+                },
+                volumes: [
+                    `${this.pluginConfigService.dataPath(".ssh")}:/home/${this.user}/.ssh:rw`
+                ]
             });
         }
 
@@ -88,7 +101,26 @@ export class ServeoService implements ProxyProvider {
         await this.dockerService.removeContainer(`serveo-${project.id}`);
     }
 
+    public async removeOldImages(): Promise<void> {
+        // @ts-ignore
+        if(!this.appConfigService.isVersionGTE || !this.appConfigService.isVersionGTE("1.0.19")) {
+            return;
+        }
+
+        const images = await this.dockerService.imageLs({
+            reference: this.oldImages
+        });
+
+        for(const image of images) {
+            const {Id} = image;
+
+            await this.dockerService.imageRm(Id, true);
+        }
+    }
+
     public async build(rebuild?: boolean): Promise<void> {
+        await this.removeOldImages();
+
         if(await this.dockerService.imageExists(this.imageName)) {
             if(!rebuild) {
                 return;
