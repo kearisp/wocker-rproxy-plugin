@@ -1,6 +1,6 @@
 FROM ubuntu:latest
 
-ARG USER=user
+ARG USER=ubuntu
 ARG UID=1000
 ARG GID=1000
 
@@ -11,8 +11,8 @@ ENV PORT="80"
 ADD ./bin/entrypoint.sh /entrypoint.sh
 
 RUN apt-get update && apt-get install -y autossh && \
-    useradd -u $UID -m -d /home/$USER -s /bin/bash $USER && \
-    chown -R $USER:$USER /home/$USER && \
+#    useradd -u $UID -m -d /home/$USER -s /bin/bash $USER && \
+#    chown -R $USER:$USER /home/$USER && \
     chmod 0755 /entrypoint.sh
 
 USER $USER

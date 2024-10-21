@@ -22,16 +22,17 @@ export class ServeoService implements ProxyProvider {
 
     get oldImages(): string[] {
         return [
-            "wocker-serveo:latest"
+            "wocker-serveo:latest",
+            "wocker-serveo:2.0.0"
         ];
     }
 
     get imageName(): string {
-        return "wocker-serveo:2.0.0";
+        return "wocker-serveo:2.0.1";
     }
 
     get user(): string {
-        return "serveo";
+        return "ubuntu";
     }
 
     public async init(project: Project): Promise<void> {
