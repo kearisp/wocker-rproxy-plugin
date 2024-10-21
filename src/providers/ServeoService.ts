@@ -23,16 +23,17 @@ export class ServeoService implements ProxyProvider {
     get oldImages(): string[] {
         return [
             "wocker-serveo:latest",
-            "wocker-serveo:2.0.0"
+            "wocker-serveo:2.0.0",
+            "wocker-serveo:2.0.1"
         ];
     }
 
     get imageName(): string {
-        return "wocker-serveo:2.0.1";
+        return "wocker-serveo:2.0.2";
     }
 
     get user(): string {
-        return "ubuntu";
+        return "serveo";
     }
 
     public async init(project: Project): Promise<void> {
@@ -146,25 +147,7 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        const container = await this.dockerService.getContainer(`serveo-${project.id}`);
-
-        if(!container) {
-            return;
-        }
-
-        const stream = await container.logs({
-            follow: true,
-            stderr: true,
-            stdout: true,
-            tail: 5
-        });
-
-        stream.on("data", (data: any) => {
-            process.stdout.write(data);
-        });
-
-        stream.on("error", (data: any) => {
-            process.stderr.write(data);
-        });
+        // @ts-ignore
+        await this.dockerService.logs(`serveo-${project.id}`);
     }
 }
