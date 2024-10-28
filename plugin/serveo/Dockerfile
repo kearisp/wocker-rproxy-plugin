@@ -1,17 +1,18 @@
-FROM ubuntu:latest
+FROM alpine:latest
 
-ARG USER=user
+ARG USER=ubuntu
 ARG UID=1000
 ARG GID=1000
 
+ENV AUTOSSH_PORT="0"
 ENV SUBDOMAIN=""
 ENV CONTAINER="default"
 ENV PORT="80"
 
 ADD ./bin/entrypoint.sh /entrypoint.sh
 
-RUN apt-get update && apt-get install -y autossh && \
-    useradd -u $UID -m -d /home/$USER -s /bin/bash $USER && \
+RUN apk update && apk add --no-cache bash autossh && \
+    adduser -u "$UID" -D "$USER" && \
     chown -R $USER:$USER /home/$USER && \
     chmod 0755 /entrypoint.sh
 

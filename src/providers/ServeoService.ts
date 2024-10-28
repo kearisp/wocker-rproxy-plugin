@@ -1,4 +1,10 @@
-import {Injectable, Project, DockerService, PluginConfigService} from "@wocker/core";
+import {
+    Injectable,
+    Project,
+    AppConfigService,
+    DockerService,
+    PluginConfigService
+} from "@wocker/core";
 import {promptText} from "@wocker/utils";
 import * as Path from "path";
 
@@ -9,16 +15,25 @@ import {SERVEO_SUBDOMAIN_KEY} from "../env";
 @Injectable()
 export class ServeoService implements ProxyProvider {
     public constructor(
+        protected readonly appConfigService: AppConfigService,
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly dockerService: DockerService
     ) {}
 
-    get user(): string {
-        return "service";
+    get oldImages(): string[] {
+        return [
+            "wocker-serveo:latest",
+            "wocker-serveo:2.0.0",
+            "wocker-serveo:2.0.1"
+        ];
     }
 
     get imageName(): string {
-        return "wocker-serveo";
+        return "wocker-serveo:2.0.2";
+    }
+
+    get user(): string {
+        return "serveo";
     }
 
     public async init(project: Project): Promise<void> {
@@ -54,14 +69,14 @@ export class ServeoService implements ProxyProvider {
                 image: this.imageName,
                 tty: true,
                 restart: "always",
-                volumes: [
-                    `${this.pluginConfigService.dataPath(".ssh")}:/home/${this.user}/.ssh:rw`
-                ],
                 env: {
                     SUBDOMAIN: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
                     CONTAINER: project.containerName,
                     PORT: project.getEnv("VIRTUAL_PORT", "80") as string
-                }
+                },
+                volumes: [
+                    `${this.pluginConfigService.dataPath(".ssh")}:/home/${this.user}/.ssh:rw`
+                ]
             });
         }
 
@@ -88,7 +103,29 @@ export class ServeoService implements ProxyProvider {
         await this.dockerService.removeContainer(`serveo-${project.id}`);
     }
 
+    public async removeOldImages(): Promise<void> {
+        // @ts-ignore
+        if(!this.appConfigService.isVersionGTE || !this.appConfigService.isVersionGTE("1.0.19")) {
+            return;
+        }
+
+        // @ts-ignore
+        const images = await this.dockerService.imageLs({
+            // @ts-ignore
+            reference: this.oldImages
+        });
+
+        for(const image of images) {
+            const {Id} = image;
+
+            // @ts-ignore
+            await this.dockerService.imageRm(Id, true);
+        }
+    }
+
     public async build(rebuild?: boolean): Promise<void> {
+        await this.removeOldImages();
+
         if(await this.dockerService.imageExists(this.imageName)) {
             if(!rebuild) {
                 return;
@@ -110,25 +147,7 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        const container = await this.dockerService.getContainer(`serveo-${project.id}`);
-
-        if(!container) {
-            return;
-        }
-
-        const stream = await container.logs({
-            follow: true,
-            stderr: true,
-            stdout: true,
-            tail: 5
-        });
-
-        stream.on("data", (data: any) => {
-            process.stdout.write(data);
-        });
-
-        stream.on("error", (data: any) => {
-            process.stderr.write(data);
-        });
+        // @ts-ignore
+        await this.dockerService.logs(`serveo-${project.id}`);
     }
 }
