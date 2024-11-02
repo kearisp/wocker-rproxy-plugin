@@ -11,6 +11,8 @@ export class NgrokService implements ProxyProvider {
         protected readonly dockerService: DockerService
     ) {}
 
+    public imageName = "ngrok/ngrok:latest";
+
     public async init(project: Project): Promise<void> {
         const token = await promptText({
             message: "Auth token:",
@@ -47,18 +49,19 @@ export class NgrokService implements ProxyProvider {
         let container = await this.dockerService.getContainer(`ngrok-${project.id}`);
 
         if(!container) {
-            await this.dockerService.pullImage("ngrok/ngrok:latest");
+            await this.dockerService.pullImage(this.imageName);
 
             container = await this.dockerService.createContainer({
                 name: `ngrok-${project.id}`,
-                image: "ngrok/ngrok:latest",
+                image: this.imageName,
                 tty: true,
                 restart: "always",
                 env: {
                     NGROK_AUTHTOKEN: project.getMeta(NGROK_TOKEN_KEY)
                 },
                 cmd: (() => {
-                    const cmd: string[] = ["http", `${project.name}.workspace:80`];
+                    const port = project.getEnv("VIRTUAL_PORT") || "80";
+                    const cmd: string[] = ["http", `${project.containerName}:${port}`];
 
                     if(project.hasMeta(NGROK_SUBDOMAIN_KEY)) {
                         cmd.push(`--domain=${project.getMeta(NGROK_SUBDOMAIN_KEY)}.ngrok-free.app`);
@@ -116,6 +119,6 @@ export class NgrokService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        await this.dockerService.attach(`ngrok-${project.id}`);
+        await this.dockerService.logs(`ngrok-${project.id}`);
     }
 }
