@@ -1,4 +1,4 @@
-import {Injectable, Project, DockerService, LogService} from "@wocker/core";
+import {Injectable, Project, DockerService} from "@wocker/core";
 import {promptText, promptConfirm} from "@wocker/utils";
 import axios from "axios";
 import * as Path from "path";
@@ -15,8 +15,7 @@ export class LocalTunnelService implements ProxyProvider {
     protected readonly imageName = "ws-localtunnel";
 
     public constructor(
-        protected readonly dockerService: DockerService,
-        protected readonly logService: LogService
+        protected readonly dockerService: DockerService
     ) {}
 
     public async init(project: Project): Promise<void> {
@@ -36,29 +35,38 @@ export class LocalTunnelService implements ProxyProvider {
         project.setMeta(LT_SUBDOMAIN_KEY, subdomain);
     }
 
-    public async start(project: Project, restart?: boolean): Promise<void> {
-        if(restart) {
-            await this.stop(project);
-        }
-
+    public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
         let container = await this.dockerService.getContainer(`localtunnel-${project.name}`);
 
+        if(container && (restart || rebuild)) {
+            await this.stop(project);
+
+            container = null;
+        }
+
         if(!container) {
-            await this.build();
+            await this.build(rebuild);
 
             const subdomain = project.getMeta(LT_SUBDOMAIN_KEY, project.name);
+
+            const containerPort = project.getEnv("VIRTUAL_PORT", "80");
+            const host = project.domains[0] || project.containerName;
 
             container = await this.dockerService.createContainer({
                 name: `localtunnel-${project.name}`,
                 image: this.imageName,
                 restart: "always",
-                networkMode: "host",
                 cmd: [
-                    "lt",
-                    "--port=80",
-                    `--local-host=${project.containerName}`,
-                    `--subdomain=${subdomain}`,
-                    "--print-requests"
+                    "bash",
+                    "-i",
+                    "-c",
+                    [
+                        "lt",
+                        `--port=${containerPort}`,
+                        `--local-host=${host}`,
+                        `--subdomain=${subdomain}`,
+                        "--print-requests"
+                    ].join(" ")
                 ]
             });
 
