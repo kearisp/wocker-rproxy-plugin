@@ -3,7 +3,8 @@ import {
     Project,
     AppConfigService,
     DockerService,
-    PluginConfigService
+    PluginConfigService,
+    FileSystem
 } from "@wocker/core";
 import {promptText} from "@wocker/utils";
 import * as Path from "path";
@@ -19,6 +20,10 @@ export class ServeoService implements ProxyProvider {
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly dockerService: DockerService
     ) {}
+
+    get fs(): FileSystem {
+        return this.pluginConfigService.fs;
+    }
 
     get oldImages(): string[] {
         return [
@@ -57,8 +62,8 @@ export class ServeoService implements ProxyProvider {
         let container = await this.dockerService.getContainer(`serveo-${project.id}`);
 
         if(!container) {
-            if(!this.pluginConfigService.exists(".ssh")) {
-                await this.pluginConfigService.mkdir(".ssh", {
+            if(!this.fs.exists(".ssh")) {
+                this.fs.mkdir(".ssh", {
                     recursive: true,
                     mode: 0o700
                 });
@@ -75,7 +80,7 @@ export class ServeoService implements ProxyProvider {
                     PORT: project.getEnv("VIRTUAL_PORT", "80") as string
                 },
                 volumes: [
-                    `${this.pluginConfigService.dataPath(".ssh")}:/home/${this.user}/.ssh:rw`
+                    `${this.fs.path(".ssh")}:/home/${this.user}/.ssh:rw`
                 ]
             });
         }
@@ -104,21 +109,17 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async removeOldImages(): Promise<void> {
-        // @ts-ignore
-        if(!this.appConfigService.isVersionGTE || !this.appConfigService.isVersionGTE("1.0.19")) {
+        if(!this.appConfigService.isVersionGTE("1.0.21")) {
             return;
         }
 
-        // @ts-ignore
         const images = await this.dockerService.imageLs({
-            // @ts-ignore
             reference: this.oldImages
         });
 
         for(const image of images) {
             const {Id} = image;
 
-            // @ts-ignore
             await this.dockerService.imageRm(Id, true);
         }
     }
@@ -147,7 +148,6 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        // @ts-ignore
         await this.dockerService.logs(`serveo-${project.id}`);
     }
 }
