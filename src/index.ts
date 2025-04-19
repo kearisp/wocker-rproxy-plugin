@@ -1,4 +1,5 @@
 import {Plugin, PluginConfigService} from "@wocker/core";
+import {CloudflareService} from "./providers/CloudflareService";
 import {ReverseProxyController} from "./controllers/ReverseProxyController";
 import {ReverseProxyService} from "./services/ReverseProxyService";
 import {LocalTunnelService} from "./providers/LocalTunnelService";
@@ -14,6 +15,7 @@ import {ServeoService} from "./providers/ServeoService";
     providers: [
         PluginConfigService,
         ReverseProxyService,
+        CloudflareService,
         NgrokService,
         ServeoService,
         LocalTunnelService

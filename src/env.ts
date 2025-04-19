@@ -1,6 +1,7 @@
 export const TYPE_SERVEO = "serveo";
 export const TYPE_NGROK = "ngrok";
 export const TYPE_LT = "local-tunnel";
+export const TYPE_CLOUDFLARE = "cloudflare";
 export const PROXY_TYPE_KEY = "REVERSE_PROXY";
 export const SERVEO_SUBDOMAIN_KEY = "SERVEO_SUBDOMAIN";
 export const NGROK_TOKEN_KEY = "NGROK_AUTHTOKEN";
