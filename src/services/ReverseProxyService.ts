@@ -1,6 +1,7 @@
 import {Injectable, Project} from "@wocker/core";
 import {promptConfirm, promptSelect} from "@wocker/utils";
 
+import {CloudflareService} from "../providers/CloudflareService";
 import {ProxyProvider} from "../types/ProxyProvider";
 import {NgrokService} from "../providers/NgrokService";
 import {ServeoService} from "../providers/ServeoService";
@@ -9,13 +10,15 @@ import {
     PROXY_TYPE_KEY,
     TYPE_SERVEO,
     TYPE_NGROK,
-    TYPE_LT
+    TYPE_LT,
+    TYPE_CLOUDFLARE
 } from "../env";
 
 
 @Injectable()
 export class ReverseProxyService {
     public constructor(
+        protected readonly cloudflareService: CloudflareService,
         protected readonly ngrokService: NgrokService,
         protected readonly serveoService: ServeoService,
         protected readonly localTunnelService: LocalTunnelService
@@ -31,6 +34,9 @@ export class ReverseProxyService {
 
             case TYPE_NGROK:
                 return this.ngrokService;
+
+            case TYPE_CLOUDFLARE:
+                return this.cloudflareService;
 
             default:
                 throw new Error(`Reverse proxy provider "${type}" not found.`);
@@ -72,7 +78,8 @@ export class ReverseProxyService {
             options: [
                 {label: "Ngrok", value: TYPE_NGROK},
                 {label: "Serveo", value: TYPE_SERVEO},
-                {label: "LocalTunnel", value: TYPE_LT}
+                {label: "LocalTunnel", value: TYPE_LT},
+                {label: "Cloudflared", value: TYPE_CLOUDFLARE}
             ],
             default: project.getMeta(PROXY_TYPE_KEY)
         });
