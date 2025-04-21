@@ -1,6 +1,6 @@
 {
     "name": "@wocker/rproxy-plugin",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Wocker reverse proxy plugin",
     "license": "MIT",
@@ -19,7 +19,7 @@
         "wocker-plugin"
     ],
     "scripts": {
-        "prepare": "npm run build",
+        "prepublishOnly": "npm run build",
         "watch": "tsc -w",
         "build": "tsc",
         "test": "echo \"Error: no test specified\" && exit 1"
@@ -27,11 +27,11 @@
     "dependencies": {
         "@wocker/core": "^1.0.21",
         "@wocker/utils": "^1.0.9",
-        "axios": "^1.7.2",
+        "axios": "^1.8.4",
         "path": "^0.12.7"
     },
     "devDependencies": {
-        "@types/node": "^22.13.10",
-        "typescript": "^5.8.2"
+        "@types/node": "^22.14.1",
+        "typescript": "^5.8.3"
     }
 }
