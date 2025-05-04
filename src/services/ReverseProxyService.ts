@@ -1,6 +1,5 @@
 import {Injectable, Project} from "@wocker/core";
 import {promptConfirm, promptSelect} from "@wocker/utils";
-
 import {ProxyProvider} from "../types/ProxyProvider";
 import {NgrokService} from "../providers/NgrokService";
 import {ServeoService} from "../providers/ServeoService";
@@ -68,7 +67,8 @@ export class ReverseProxyService {
         }
 
         const proxyName = await promptSelect({
-            message: "Reverse proxy:",
+            message: "Reverse proxy",
+            required: true,
             options: [
                 {label: "Ngrok", value: TYPE_NGROK},
                 {label: "Serveo", value: TYPE_SERVEO},
@@ -85,7 +85,7 @@ export class ReverseProxyService {
                     .stop(project);
             }
             catch(err) {
-                console.log(err);
+                console.error(err);
             }
         }
 
