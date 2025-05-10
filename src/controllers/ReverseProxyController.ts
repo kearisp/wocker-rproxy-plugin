@@ -1,19 +1,25 @@
 import {
     Controller,
+    Completion,
+    Description,
     Project,
     Command,
     Option,
+    AppConfigService,
     AppEventsService,
+    PluginConfigService,
     ProjectService
 } from "@wocker/core";
-
 import {ReverseProxyService} from "../services/ReverseProxyService";
 
 
 @Controller()
+@Description("Reverse proxy commands")
 export class ReverseProxyController {
     public constructor(
+        protected readonly appConfigService: AppConfigService,
         protected readonly appEventsService: AppEventsService,
+        protected readonly pluginConfigService: PluginConfigService,
         protected readonly reverseProxyService: ReverseProxyService,
         protected readonly projectService: ProjectService
     ) {
@@ -31,12 +37,10 @@ export class ReverseProxyController {
     }
 
     @Command("rproxy:init")
+    @Description("Initialize and configure reverse proxy settings for the project")
     public async init(
-        @Option("name", {
-            type: "string",
-            alias: "n",
-            description: "The name of the project"
-        })
+        @Option("name", "n")
+        @Description("The name of the project")
         name?: string
     ): Promise<void> {
         if(name) {
@@ -49,24 +53,16 @@ export class ReverseProxyController {
     }
 
     @Command("rproxy:start")
+    @Description("Start reverse proxy container with optional rebuild and restart capabilities")
     public async start(
-        @Option("name", {
-            type: "string",
-            alias: "n",
-            description: "The name of the project"
-        })
+        @Option("name", "n")
+        @Description("The name of the project")
         name?: string,
-        @Option("restart", {
-            type: "boolean",
-            alias: "r",
-            description: "Restart"
-        })
+        @Option("restart", "r")
+        @Description("Force restart of the reverse proxy container even if it's already running")
         restart?: boolean,
-        @Option("build", {
-            type: "boolean",
-            alias: "b",
-            description: "Build image"
-        })
+        @Option("build", "b")
+        @Description("Rebuild the reverse proxy container image before starting")
         build?: boolean
     ): Promise<void> {
         if(name) {
@@ -79,12 +75,10 @@ export class ReverseProxyController {
     }
 
     @Command("rproxy:stop")
+    @Description("Stop running reverse proxy container")
     public async stop(
-        @Option("name", {
-            type: "string",
-            alias: "n",
-            description: "The name of the project"
-        })
+        @Option("name", "n")
+        @Description("The name of the project")
         name?: string
     ): Promise<void> {
         if(name) {
@@ -97,12 +91,10 @@ export class ReverseProxyController {
     }
 
     @Command("rproxy:logs")
+    @Description("Display reverse proxy container logs")
     public async logs(
-        @Option("name", {
-            type: "string",
-            alias: "n",
-            description: "The name of the project"
-        })
+        @Option("name", "n")
+        @Description("The name of the project")
         name?: string
     ): Promise<void> {
         if(name) {
@@ -112,5 +104,20 @@ export class ReverseProxyController {
         const project = await this.projectService.get();
 
         await this.reverseProxyService.logs(project);
+    }
+
+    @Completion("name")
+    public getProjectNames(): string[] {
+        if(!this.pluginConfigService.isVersionGTE("1.0.21")) {
+            return [];
+        }
+
+        const {
+            projects = []
+        } = this.appConfigService.config;
+
+        return projects
+            .map((projectData) => projectData.name)
+            .filter(Boolean) as string[];
     }
 }

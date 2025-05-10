@@ -6,7 +6,7 @@ import {
     PluginConfigService,
     FileSystem
 } from "@wocker/core";
-import {promptText} from "@wocker/utils";
+import {promptInput} from "@wocker/utils";
 import * as Path from "path";
 
 import {ProxyProvider} from "../types/ProxyProvider";
@@ -42,7 +42,7 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async init(project: Project): Promise<void> {
-        const subdomain = await promptText({
+        const subdomain = await promptInput({
             message: "Subdomain: ",
             prefix: "https://",
             suffix: ".serveo.net",

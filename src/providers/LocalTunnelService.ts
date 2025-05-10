@@ -1,5 +1,5 @@
 import {Injectable, Project, DockerService} from "@wocker/core";
-import {promptText, promptConfirm} from "@wocker/utils";
+import {promptInput, promptConfirm} from "@wocker/utils";
 import axios from "axios";
 import * as Path from "path";
 
@@ -19,8 +19,8 @@ export class LocalTunnelService implements ProxyProvider {
     ) {}
 
     public async init(project: Project): Promise<void> {
-        const subdomain = await promptText({
-            message: "Subdomain: ",
+        const subdomain = await promptInput({
+            message: "Subdomain",
             prefix: "https://",
             suffix: ".loca.lt",
             default: project.getMeta(LT_SUBDOMAIN_KEY, project.name)
