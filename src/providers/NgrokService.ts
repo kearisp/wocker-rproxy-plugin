@@ -1,25 +1,56 @@
-import {Injectable, DockerService, Project} from "@wocker/core";
-import {promptConfirm, promptText} from "@wocker/utils";
-
+import {Injectable, PluginConfigService, DockerService, Project} from "@wocker/core";
+import {promptConfirm, promptInput} from "@wocker/utils";
 import {ProxyProvider} from "../types/ProxyProvider";
 import {NGROK_SUBDOMAIN_KEY, NGROK_TOKEN_KEY} from "../env";
 
 
 @Injectable()
 export class NgrokService implements ProxyProvider {
-    public constructor(
-        protected readonly dockerService: DockerService
-    ) {}
-
     public imageName = "ngrok/ngrok:latest";
 
+    public constructor(
+        protected readonly pluginConfigService: PluginConfigService,
+        protected readonly dockerService: DockerService,
+    ) {}
+
+    public async getToken(project: Project): Promise<string> {
+        const oldVersion = project.getMeta(NGROK_TOKEN_KEY, "") as string;
+
+        if(!this.pluginConfigService.isVersionGTE("1.0.22")) {
+            console.info("Please upgrade @wocker/ws to version 1.0.22 or higher to enable secure key storage using keystore (encrypted file or keytar)");
+
+            return oldVersion;
+        }
+
+        return project.getSecret(NGROK_TOKEN_KEY, oldVersion);
+    }
+
+    public async setToken(project: Project, token: string): Promise<void> {
+        if(!this.pluginConfigService.isVersionGTE("1.0.22")) {
+            console.info("Please upgrade @wocker/ws to version 1.0.22 or higher to enable secure key storage using keystore (encrypted file or keytar)");
+
+            project.setMeta(NGROK_TOKEN_KEY, token);
+            project.save();
+            return;
+        }
+
+        if(project.hasMeta(NGROK_TOKEN_KEY)) {
+            project.unsetMeta(NGROK_TOKEN_KEY);
+            project.save();
+        }
+
+        await project.setSecret(NGROK_TOKEN_KEY, token);
+    }
+
     public async init(project: Project): Promise<void> {
-        const token = await promptText({
-            message: "Auth token:",
-            default: project.getMeta(NGROK_TOKEN_KEY, "")
+        const token = await promptInput({
+            message: "Auth token",
+            required: true,
+            type: "text",
+            default: await this.getToken(project)
         });
 
-        project.setMeta(NGROK_TOKEN_KEY, token);
+        await this.setToken(project, token);
 
         const enableSubdomain = await promptConfirm({
             message: "Enable subdomain?",
@@ -27,8 +58,8 @@ export class NgrokService implements ProxyProvider {
         });
 
         if(enableSubdomain) {
-            const subdomain = await promptText({
-                message: "Subdomain: ",
+            const subdomain = await promptInput({
+                message: "Subdomain",
                 prefix: "https://",
                 suffix: ".ngrok-free.app",
                 default: project.getMeta(NGROK_SUBDOMAIN_KEY, project.name)
@@ -57,7 +88,7 @@ export class NgrokService implements ProxyProvider {
                 tty: true,
                 restart: "always",
                 env: {
-                    NGROK_AUTHTOKEN: project.getMeta(NGROK_TOKEN_KEY)
+                    NGROK_AUTHTOKEN: await this.getToken(project)
                 },
                 cmd: (() => {
                     const port = project.getEnv("VIRTUAL_PORT") || "80";

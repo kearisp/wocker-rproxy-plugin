@@ -1,6 +1,6 @@
 {
     "name": "@wocker/rproxy-plugin",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Wocker reverse proxy plugin",
     "license": "MIT",
@@ -25,8 +25,8 @@
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "dependencies": {
-        "@wocker/core": "^1.0.21",
-        "@wocker/utils": "^1.0.9",
+        "@wocker/core": "^1.0.22",
+        "@wocker/utils": "^2.0.0",
         "axios": "^1.8.4",
         "path": "^0.12.7"
     },

@@ -6,9 +6,8 @@ import {
     PluginConfigService,
     FileSystem
 } from "@wocker/core";
-import {promptText} from "@wocker/utils";
+import {promptInput} from "@wocker/utils";
 import * as Path from "path";
-
 import {ProxyProvider} from "../types/ProxyProvider";
 import {SERVEO_SUBDOMAIN_KEY} from "../env";
 
@@ -21,11 +20,11 @@ export class ServeoService implements ProxyProvider {
         protected readonly dockerService: DockerService
     ) {}
 
-    get fs(): FileSystem {
+    public get fs(): FileSystem {
         return this.pluginConfigService.fs;
     }
 
-    get oldImages(): string[] {
+    public get oldImages(): string[] {
         return [
             "wocker-serveo:latest",
             "wocker-serveo:2.0.0",
@@ -33,16 +32,16 @@ export class ServeoService implements ProxyProvider {
         ];
     }
 
-    get imageName(): string {
+    public get imageName(): string {
         return "wocker-serveo:2.0.2";
     }
 
-    get user(): string {
+    public get user(): string {
         return "serveo";
     }
 
     public async init(project: Project): Promise<void> {
-        const subdomain = await promptText({
+        const subdomain = await promptInput({
             message: "Subdomain: ",
             prefix: "https://",
             suffix: ".serveo.net",
