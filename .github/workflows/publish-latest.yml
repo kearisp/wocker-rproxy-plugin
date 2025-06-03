@@ -1,4 +1,4 @@
-name: Publish latest
+name: Latest
 
 on:
     release:
@@ -7,7 +7,7 @@ on:
 
 jobs:
     publish:
-        name: Publish latest version
+        name: Publish latest
         runs-on: ubuntu-latest
         environment: publish
         permissions:
