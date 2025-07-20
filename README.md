@@ -2,6 +2,14 @@
 
 ###### Docker workspace for web projects
 
+[![npm version](https://img.shields.io/npm/v/@wocker/rproxy-plugin.svg)](https://www.npmjs.com/package/@wocker/rproxy-plugin)
+[![Publish](https://github.com/kearisp/wocker-rproxy-plugin/actions/workflows/publish-latest.yml/badge.svg?event=release)](https://github.com/kearisp/wocker-rproxy-plugin/actions/workflows/publish-latest.yml)
+[![License](https://img.shields.io/npm/l/@wocker/rproxy-plugin)](https://github.com/kearisp/wocker-rproxy-plugin/blob/main/LICENSE)
+
+[![npm total downloads](https://img.shields.io/npm/dt/@wocker/rproxy-plugin.svg)](https://www.npmjs.com/package/@wocker/rproxy-plugin)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@wocker/rproxy-plugin)](https://bundlephobia.com/package/@wocker/rproxy-plugin)
+
+
 ## Installation
 
 **Note:** It is recommended to install Wocker globally to ensure accessibility from any directory in your terminal.
@@ -11,7 +19,7 @@ npm i -g @wocker/ws
 ```
 
 ```shell
-ws plugin:add rproxy
+ws plugin:install rproxy
 ```
 
 
