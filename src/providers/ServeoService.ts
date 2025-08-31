@@ -108,7 +108,7 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async removeOldImages(): Promise<void> {
-        if(!this.appConfigService.isVersionGTE("1.0.21")) {
+        if(!this.pluginConfigService.isVersionGTE("1.0.21")) {
             return;
         }
 
@@ -136,13 +136,14 @@ export class ServeoService implements ProxyProvider {
 
         await this.dockerService.buildImage({
             tag: this.imageName,
-            context: Path.join(__dirname, "../../plugin/serveo"),
             buildArgs: {
                 UID: (process.getuid ? process.getuid() : 1000).toString(),
                 GID: (process.getgid ? process.getgid() : 1000).toString(),
                 USER: this.user
             },
-            src: "./Dockerfile"
+            context: Path.join(__dirname, "../../plugin/serveo"),
+            src: "./Dockerfile",
+            dockerfile: "./Dockerfile"
         });
     }
 

@@ -2,7 +2,6 @@ import {Injectable, Project, DockerService} from "@wocker/core";
 import {promptInput, promptConfirm} from "@wocker/utils";
 import axios from "axios";
 import * as Path from "path";
-
 import {ProxyProvider} from "../types/ProxyProvider";
 import {
     LT_SUBDOMAIN_KEY,
@@ -141,7 +140,8 @@ export class LocalTunnelService implements ProxyProvider {
         await this.dockerService.buildImage({
             tag: this.imageName,
             context: Path.join(__dirname, "../../plugin/localtunnel"),
-            src: "./Dockerfile"
+            src: "./Dockerfile",
+            dockerfile: "./Dockerfile"
         });
     }
 
