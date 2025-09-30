@@ -77,13 +77,13 @@ export class NgrokService implements ProxyProvider {
             await this.stop(project);
         }
 
-        let container = await this.dockerService.getContainer(`ngrok-${project.id}`);
+        let container = await this.dockerService.getContainer(`ngrok-${project.name}`);
 
         if(!container) {
             await this.dockerService.pullImage(this.imageName);
 
             container = await this.dockerService.createContainer({
-                name: `ngrok-${project.id}`,
+                name: `ngrok-${project.name}`,
                 image: this.imageName,
                 tty: true,
                 restart: "always",
@@ -142,7 +142,7 @@ export class NgrokService implements ProxyProvider {
     }
 
     public async stop(project: Project): Promise<void> {
-        await this.dockerService.removeContainer(`ngrok-${project.id}`);
+        await this.dockerService.removeContainer(`ngrok-${project.name}`);
     }
 
     public async build(rebuild?: boolean): Promise<void> {
@@ -150,6 +150,6 @@ export class NgrokService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        await this.dockerService.logs(`ngrok-${project.id}`);
+        await this.dockerService.logs(`ngrok-${project.name}`);
     }
 }

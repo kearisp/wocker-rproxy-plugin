@@ -95,6 +95,10 @@ export class ServeoService implements ProxyProvider {
 
             const stream = await this.dockerService.attach(container);
 
+            if(!stream) {
+                return;
+            }
+
             stream.on("data", (data: Buffer): void => {
                 if(/Forwarding HTTP traffic/.test(data.toString())) {
                     stream.end();
