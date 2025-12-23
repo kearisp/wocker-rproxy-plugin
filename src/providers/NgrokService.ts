@@ -6,7 +6,7 @@ import {NGROK_SUBDOMAIN_KEY, NGROK_TOKEN_KEY} from "../env";
 
 @Injectable()
 export class NgrokService implements ProxyProvider {
-    public imageName = "ngrok/ngrok:latest";
+    public imageName = "ngrok/ngrok:3-alpine";
 
     public constructor(
         protected readonly pluginConfigService: PluginConfigService,
@@ -77,13 +77,13 @@ export class NgrokService implements ProxyProvider {
             await this.stop(project);
         }
 
-        let container = await this.dockerService.getContainer(`ngrok-${project.id}`);
+        let container = await this.dockerService.getContainer(`ngrok-${project.name}`);
 
         if(!container) {
             await this.dockerService.pullImage(this.imageName);
 
             container = await this.dockerService.createContainer({
-                name: `ngrok-${project.id}`,
+                name: `ngrok-${project.name}`,
                 image: this.imageName,
                 tty: true,
                 restart: "always",
@@ -111,38 +111,34 @@ export class NgrokService implements ProxyProvider {
                 stderr: true
             });
 
-            stream.setEncoding("utf8");
-
             await container.start();
 
-            await container.resize({
-                w: process.stdout.columns,
-                h: process.stdout.rows
-            });
+            await Promise.all([
+                this.dockerService.attachStream(stream),
+                new Promise((resolve, reject) => {
+                    stream.on("data", (data: ArrayBuffer) => {
+                        const regLink = /(https?):\/\/(\w[\w.-]+[a-z]|\d+\.\d+\.\d+\.\d+)(?::(\d+))?/;
 
-            await new Promise((resolve, reject) => {
-                stream.on("data", (data: ArrayBuffer) => {
-                    const regLink = /(https?):\/\/(\w[\w.-]+[a-z]|\d+\.\d+\.\d+\.\d+)(?::(\d+))?/;
+                        if(regLink.test(data.toString())) {
+                            const [link = ""] = regLink.exec(data.toString()) || [];
 
-                    if(regLink.test(data.toString())) {
-                        const [link = ""] = regLink.exec(data.toString()) || [];
-
-                        if(link.includes(".ngrok")) {
-                            console.info(`Forwarding: ${link}`);
-
-                            stream.end();
+                            if(link.includes(".ngrok")) {
+                                stream.end();
+                            }
                         }
-                    }
-                });
+                    });
 
-                stream.on("end", resolve);
-                stream.on("error", reject);
-            });
+                    stream.on("end", resolve);
+                    stream.on("error", reject);
+                })
+            ]);
+
+            process.stdout.write("\n");
         }
     }
 
     public async stop(project: Project): Promise<void> {
-        await this.dockerService.removeContainer(`ngrok-${project.id}`);
+        await this.dockerService.removeContainer(`ngrok-${project.name}`);
     }
 
     public async build(rebuild?: boolean): Promise<void> {
@@ -150,6 +146,33 @@ export class NgrokService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        await this.dockerService.logs(`ngrok-${project.id}`);
+        const container = await this.dockerService.getContainer(`ngrok-${project.name}`);
+
+        if(!container) {
+            return;
+        }
+
+        const stream = await container.attach({
+            logs: true,
+            stream: true,
+            hijack: true,
+            stdin: true,
+            stdout: true,
+            stderr: true,
+            detachKeys: "ctrl-c"
+        });
+
+        await container.resize({
+            w: process.stdout.columns - 1,
+            h: process.stdout.rows
+        });
+
+        await Promise.all([
+            this.dockerService.attachStream(stream),
+            container.resize({
+                w: process.stdout.columns,
+                h: process.stdout.rows
+            })
+        ]);
     }
 }
