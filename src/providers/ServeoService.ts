@@ -58,7 +58,7 @@ export class ServeoService implements ProxyProvider {
 
         await this.build(rebuild);
 
-        let container = await this.dockerService.getContainer(`serveo-${project.id}`);
+        let container = await this.dockerService.getContainer(`serveo-${project.name}`);
 
         if(!container) {
             if(!this.fs.exists(".ssh")) {
@@ -69,7 +69,7 @@ export class ServeoService implements ProxyProvider {
             }
 
             container = await this.dockerService.createContainer({
-                name: `serveo-${project.id}`,
+                name: `serveo-${project.name}`,
                 image: this.imageName,
                 tty: true,
                 restart: "always",
@@ -108,7 +108,7 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async stop(project: Project): Promise<void> {
-        await this.dockerService.removeContainer(`serveo-${project.id}`);
+        await this.dockerService.removeContainer(`serveo-${project.name}`);
     }
 
     public async removeOldImages(): Promise<void> {
@@ -152,6 +152,6 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        await this.dockerService.logs(`serveo-${project.id}`);
+        await this.dockerService.logs(`serveo-${project.name}`);
     }
 }
