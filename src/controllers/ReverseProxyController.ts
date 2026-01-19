@@ -6,7 +6,7 @@ import {
     Command,
     Option,
     AppConfigService,
-    AppEventsService,
+    EventService,
     PluginConfigService,
     ProjectService
 } from "@wocker/core";
@@ -18,7 +18,7 @@ import {ReverseProxyService} from "../services/ReverseProxyService";
 export class ReverseProxyController {
     public constructor(
         protected readonly appConfigService: AppConfigService,
-        protected readonly appEventsService: AppEventsService,
+        protected readonly appEventsService: EventService,
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly reverseProxyService: ReverseProxyService,
         protected readonly projectService: ProjectService

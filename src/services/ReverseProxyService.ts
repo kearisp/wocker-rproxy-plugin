@@ -79,7 +79,7 @@ export class ReverseProxyService {
                 {label: "Ngrok", value: TYPE_NGROK},
                 {label: "Serveo", value: TYPE_SERVEO},
                 {label: "LocalTunnel", value: TYPE_LT},
-                {label: "Expose", value: TYPE_EXPOSE}
+                {label: "Expose (unstable)", value: TYPE_EXPOSE}
             ],
             default: project.getMeta(PROXY_TYPE_KEY)
         });

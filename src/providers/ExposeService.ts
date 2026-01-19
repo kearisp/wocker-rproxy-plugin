@@ -10,8 +10,8 @@ import {promptInput} from "@wocker/utils";
 import * as Path from "path";
 import {ProxyProvider} from "../types/ProxyProvider";
 import {
+    SUBDOMAIN_KEY,
     EXPOSE_TOKEN_KEY,
-    EXPOSE_SUBDOMAIN_KEY,
     EXPOSE_SERVER_KEY
 } from "../env";
 
@@ -44,10 +44,11 @@ export class ExposeService implements ProxyProvider {
 
         const subdomain = await promptInput({
             message: "Subdomain: ",
-            default: project.getMeta(EXPOSE_SUBDOMAIN_KEY, project.name)
+            suffix: ".sharedwithexpose.com",
+            default: project.getMeta(SUBDOMAIN_KEY, project.name)
         });
 
-        project.setMeta(EXPOSE_SUBDOMAIN_KEY, subdomain);
+        project.setMeta(SUBDOMAIN_KEY, subdomain);
 
         const server = await promptInput({
             message: "Expose Server: ",

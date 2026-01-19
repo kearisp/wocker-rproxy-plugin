@@ -1,7 +1,7 @@
 import {Injectable, PluginConfigService, DockerService, Project} from "@wocker/core";
 import {promptConfirm, promptInput} from "@wocker/utils";
 import {ProxyProvider} from "../types/ProxyProvider";
-import {NGROK_SUBDOMAIN_KEY, NGROK_TOKEN_KEY} from "../env";
+import {SUBDOMAIN_KEY, NGROK_SUBDOMAIN_KEY, NGROK_TOKEN_KEY} from "../env";
 
 
 @Injectable()
@@ -62,12 +62,14 @@ export class NgrokService implements ProxyProvider {
                 message: "Subdomain",
                 prefix: "https://",
                 suffix: ".ngrok-free.app",
-                default: project.getMeta(NGROK_SUBDOMAIN_KEY, project.name)
+                default: project.getMeta(SUBDOMAIN_KEY) || project.getMeta(NGROK_SUBDOMAIN_KEY, project.name)
             });
 
-            project.setMeta(NGROK_SUBDOMAIN_KEY, subdomain);
+            project.setMeta(SUBDOMAIN_KEY, subdomain);
+            project.unsetMeta(NGROK_SUBDOMAIN_KEY);
         }
         else {
+            project.unsetMeta(SUBDOMAIN_KEY);
             project.unsetMeta(NGROK_SUBDOMAIN_KEY);
         }
     }
@@ -94,8 +96,10 @@ export class NgrokService implements ProxyProvider {
                     const port = project.getEnv("VIRTUAL_PORT") || "80";
                     const cmd: string[] = ["http", `${project.containerName}:${port}`];
 
-                    if(project.hasMeta(NGROK_SUBDOMAIN_KEY)) {
-                        cmd.push(`--domain=${project.getMeta(NGROK_SUBDOMAIN_KEY)}.ngrok-free.app`);
+                    if(project.hasMeta(SUBDOMAIN_KEY) || project.hasMeta(NGROK_SUBDOMAIN_KEY)) {
+                        const subdomain = project.getMeta(SUBDOMAIN_KEY) || project.getMeta(NGROK_SUBDOMAIN_KEY);
+
+                        cmd.push(`--domain=${subdomain}.ngrok-free.app`);
                     }
 
                     return cmd;

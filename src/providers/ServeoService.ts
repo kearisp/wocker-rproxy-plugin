@@ -9,7 +9,7 @@ import {
 import {promptInput} from "@wocker/utils";
 import * as Path from "path";
 import {ProxyProvider} from "../types/ProxyProvider";
-import {SERVEO_SUBDOMAIN_KEY} from "../env";
+import {SERVEO_SUBDOMAIN_KEY, SUBDOMAIN_KEY} from "../env";
 
 
 @Injectable()
@@ -45,10 +45,11 @@ export class ServeoService implements ProxyProvider {
             message: "Subdomain: ",
             prefix: "https://",
             suffix: ".serveo.net",
-            default: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name)
+            default: project.getMeta(SUBDOMAIN_KEY) || project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name)
         });
 
-        project.setMeta(SERVEO_SUBDOMAIN_KEY, subdomain);
+        project.setMeta(SUBDOMAIN_KEY, subdomain);
+        project.unsetMeta(SERVEO_SUBDOMAIN_KEY);
     }
 
     public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
@@ -74,7 +75,7 @@ export class ServeoService implements ProxyProvider {
                 tty: true,
                 restart: "always",
                 env: {
-                    SUBDOMAIN: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
+                    SUBDOMAIN: project.getEnv(SUBDOMAIN_KEY) || project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
                     CONTAINER: project.containerName,
                     PORT: project.getEnv("VIRTUAL_PORT", "80") as string
                 },
