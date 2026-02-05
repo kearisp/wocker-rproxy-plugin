@@ -9,7 +9,7 @@ import {
 import {promptInput} from "@wocker/utils";
 import * as Path from "path";
 import {ProxyProvider} from "../types/ProxyProvider";
-import {SERVEO_SUBDOMAIN_KEY} from "../env";
+import {SERVEO_SUBDOMAIN_KEY, SUBDOMAIN_KEY} from "../env";
 
 
 @Injectable()
@@ -45,10 +45,11 @@ export class ServeoService implements ProxyProvider {
             message: "Subdomain: ",
             prefix: "https://",
             suffix: ".serveo.net",
-            default: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name)
+            default: project.getMeta(SUBDOMAIN_KEY) || project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name)
         });
 
-        project.setMeta(SERVEO_SUBDOMAIN_KEY, subdomain);
+        project.setMeta(SUBDOMAIN_KEY, subdomain);
+        project.unsetMeta(SERVEO_SUBDOMAIN_KEY);
     }
 
     public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
@@ -58,7 +59,7 @@ export class ServeoService implements ProxyProvider {
 
         await this.build(rebuild);
 
-        let container = await this.dockerService.getContainer(`serveo-${project.id}`);
+        let container = await this.dockerService.getContainer(`serveo-${project.name}`);
 
         if(!container) {
             if(!this.fs.exists(".ssh")) {
@@ -69,12 +70,12 @@ export class ServeoService implements ProxyProvider {
             }
 
             container = await this.dockerService.createContainer({
-                name: `serveo-${project.id}`,
+                name: `serveo-${project.name}`,
                 image: this.imageName,
                 tty: true,
                 restart: "always",
                 env: {
-                    SUBDOMAIN: project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
+                    SUBDOMAIN: project.getEnv(SUBDOMAIN_KEY) || project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
                     CONTAINER: project.containerName,
                     PORT: project.getEnv("VIRTUAL_PORT", "80") as string
                 },
@@ -108,7 +109,7 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async stop(project: Project): Promise<void> {
-        await this.dockerService.removeContainer(`serveo-${project.id}`);
+        await this.dockerService.removeContainer(`serveo-${project.name}`);
     }
 
     public async removeOldImages(): Promise<void> {
@@ -152,6 +153,6 @@ export class ServeoService implements ProxyProvider {
     }
 
     public async logs(project: Project): Promise<void> {
-        await this.dockerService.logs(`serveo-${project.id}`);
+        await this.dockerService.logs(`serveo-${project.name}`);
     }
 }

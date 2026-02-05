@@ -4,6 +4,7 @@ import {ReverseProxyService} from "./services/ReverseProxyService";
 import {LocalTunnelService} from "./providers/LocalTunnelService";
 import {NgrokService} from "./providers/NgrokService";
 import {ServeoService} from "./providers/ServeoService";
+import {ExposeService} from "./providers/ExposeService";
 
 
 @Plugin({
@@ -16,7 +17,8 @@ import {ServeoService} from "./providers/ServeoService";
         ReverseProxyService,
         NgrokService,
         ServeoService,
-        LocalTunnelService
+        LocalTunnelService,
+        ExposeService
     ]
 })
 export default class ReverseProxyPlugin {}

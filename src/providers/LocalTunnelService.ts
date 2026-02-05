@@ -5,7 +5,8 @@ import * as Path from "path";
 import {ProxyProvider} from "../types/ProxyProvider";
 import {
     LT_SUBDOMAIN_KEY,
-    LT_AUTO_CONFIRM_KEY
+    LT_AUTO_CONFIRM_KEY,
+    SUBDOMAIN_KEY
 } from "../env";
 
 
@@ -22,7 +23,7 @@ export class LocalTunnelService implements ProxyProvider {
             message: "Subdomain",
             prefix: "https://",
             suffix: ".loca.lt",
-            default: project.getMeta(LT_SUBDOMAIN_KEY, project.name)
+            default: project.getMeta(SUBDOMAIN_KEY) || project.getMeta(LT_SUBDOMAIN_KEY, project.name)
         });
 
         const autoConfirmIP = await promptConfirm({
@@ -31,7 +32,8 @@ export class LocalTunnelService implements ProxyProvider {
         });
 
         project.setMeta(LT_AUTO_CONFIRM_KEY, autoConfirmIP ? "true" : "false");
-        project.setMeta(LT_SUBDOMAIN_KEY, subdomain);
+        project.setMeta(SUBDOMAIN_KEY, subdomain);
+        project.unsetMeta(LT_SUBDOMAIN_KEY);
     }
 
     public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
@@ -46,7 +48,7 @@ export class LocalTunnelService implements ProxyProvider {
         if(!container) {
             await this.build(rebuild);
 
-            const subdomain = project.getMeta(LT_SUBDOMAIN_KEY, project.name);
+            const subdomain = project.getMeta(SUBDOMAIN_KEY) || project.getMeta(LT_SUBDOMAIN_KEY, project.name);
 
             const containerPort = project.getEnv("VIRTUAL_PORT", "80");
             const host = project.domains[0] || project.containerName;
