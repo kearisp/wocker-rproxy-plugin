@@ -118,6 +118,10 @@ export class NgrokService implements ProxyProvider {
             await container.start();
 
             await Promise.all([
+                container.resize({
+                    w: process.stdout.columns,
+                    h: process.stdout.rows
+                }),
                 this.dockerService.attachStream(stream),
                 new Promise((resolve, reject) => {
                     stream.on("data", (data: ArrayBuffer) => {
