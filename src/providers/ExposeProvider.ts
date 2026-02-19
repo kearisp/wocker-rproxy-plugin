@@ -4,11 +4,13 @@ import {
     AppConfigService,
     DockerService,
     PluginConfigService,
-    FileSystem
+    FileSystem,
+    KeystoreService
 } from "@wocker/core";
 import {promptInput} from "@wocker/utils";
 import * as Path from "path";
-import {ProxyProvider} from "../types/ProxyProvider";
+import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
+import {Config} from "../makes/Config";
 import {
     SUBDOMAIN_KEY,
     EXPOSE_TOKEN_KEY,
@@ -17,11 +19,12 @@ import {
 
 
 @Injectable()
-export class ExposeService implements ProxyProvider {
+export class ExposeProvider implements ReverseProxyProvider {
     public constructor(
         protected readonly appConfigService: AppConfigService,
         protected readonly pluginConfigService: PluginConfigService,
-        protected readonly dockerService: DockerService
+        protected readonly dockerService: DockerService,
+        protected readonly keystoreService: KeystoreService
     ) {}
 
     public get fs(): FileSystem {
@@ -33,14 +36,18 @@ export class ExposeService implements ProxyProvider {
     }
 
     public async init(project: Project): Promise<void> {
+        if(!this.pluginConfigService.isVersionGTE("1.0.22")) {
+            throw new Error("Please upgrade @wocker/ws to version 1.0.22 or higher to enable secure key storage using keystore (encrypted file or keytar)");
+        }
+
         const token = await promptInput({
-            message: "Expose Auth Token: ",
-            default: project.getMeta(EXPOSE_TOKEN_KEY, "")
+            required: true,
+            message: "Expose Auth Token:",
+            type: "password",
+            default: await this.keystoreService.get(EXPOSE_TOKEN_KEY) || project.getMeta(EXPOSE_TOKEN_KEY)
         });
 
-        if(token) {
-            project.setMeta(EXPOSE_TOKEN_KEY, token);
-        }
+        await this.keystoreService.set(EXPOSE_TOKEN_KEY, token);
 
         const subdomain = await promptInput({
             message: "Subdomain: ",
@@ -52,32 +59,35 @@ export class ExposeService implements ProxyProvider {
 
         const server = await promptInput({
             message: "Expose Server: ",
-            default: project.getMeta(EXPOSE_SERVER_KEY, "sharedwithexpose.com")
+            default: this.appConfigService.getMeta(EXPOSE_SERVER_KEY) || project.getMeta(EXPOSE_SERVER_KEY, "sharedwithexpose.com")
         });
 
-        project.setMeta(EXPOSE_SERVER_KEY, server);
+        this.appConfigService.setMeta(EXPOSE_SERVER_KEY, server);
+
+        project.unsetMeta(EXPOSE_TOKEN_KEY);
+        project.unsetMeta(EXPOSE_SERVER_KEY);
     }
 
-    public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
+    public async start(config: Config, restart?: boolean, rebuild?: boolean): Promise<void> {
         if(restart || rebuild) {
-            await this.stop(project);
+            await this.stop(config);
         }
 
         await this.build(rebuild);
 
-        let container = await this.dockerService.getContainer(`expose-${project.name}`);
+        let container = await this.dockerService.getContainer(`expose-${config.name}`);
 
         if(!container) {
             container = await this.dockerService.createContainer({
-                name: `expose-${project.name}`,
+                name: config.containerName,
                 image: this.imageName,
                 tty: true,
                 // restart: "always",
                 env: {
-                    EXPOSE_TOKEN: project.getMeta(EXPOSE_TOKEN_KEY, "") || "",
-                    EXPOSE_SERVER: project.getMeta(EXPOSE_SERVER_KEY, "sharedwithexpose.com") || "",
-                    CONTAINER: project.containerName,
-                    PORT: project.getEnv("VIRTUAL_PORT", "80") || "80"
+                    EXPOSE_TOKEN: await this.keystoreService.get(EXPOSE_TOKEN_KEY) || "",
+                    EXPOSE_SERVER: this.appConfigService.getMeta(EXPOSE_SERVER_KEY, "sharedwithexpose.com") || "",
+                    CONTAINER: config.name,
+                    PORT: config.port
                 }
             });
         }
@@ -93,8 +103,8 @@ export class ExposeService implements ProxyProvider {
         }
     }
 
-    public async stop(project: Project): Promise<void> {
-        await this.dockerService.removeContainer(`expose-${project.name}`);
+    public async stop(config: Config): Promise<void> {
+        await this.dockerService.removeContainer(`expose-${config.name}`);
     }
 
     public async build(rebuild?: boolean): Promise<void> {
@@ -114,7 +124,11 @@ export class ExposeService implements ProxyProvider {
         });
     }
 
-    public async logs(project: Project): Promise<void> {
-        await this.dockerService.logs(`expose-${project.name}`);
+    public async logs(config: Config): Promise<void> {
+        await this.dockerService.logs(`expose-${config.name}`);
+    }
+
+    public async getUrl(): Promise<string> {
+        throw new Error("Unsupported");
     }
 }

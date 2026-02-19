@@ -1,8 +1,9 @@
-import {Injectable, Project, DockerService} from "@wocker/core";
+import {Injectable, Project, DockerService, AppConfigService} from "@wocker/core";
 import {promptInput, promptConfirm} from "@wocker/utils";
 import axios from "axios";
 import * as Path from "path";
-import {ProxyProvider} from "../types/ProxyProvider";
+import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
+import {Config} from "../makes/Config";
 import {
     LT_SUBDOMAIN_KEY,
     LT_AUTO_CONFIRM_KEY,
@@ -11,10 +12,11 @@ import {
 
 
 @Injectable()
-export class LocalTunnelService implements ProxyProvider {
+export class LocalTunnelProvider implements ReverseProxyProvider {
     protected readonly imageName = "ws-localtunnel";
 
     public constructor(
+        protected readonly appConfigService: AppConfigService,
         protected readonly dockerService: DockerService
     ) {}
 
@@ -28,19 +30,22 @@ export class LocalTunnelService implements ProxyProvider {
 
         const autoConfirmIP = await promptConfirm({
             message: "Do you want to skip the IP confirmation form automatically?",
-            default: project.getEnv(LT_AUTO_CONFIRM_KEY, "true") === "true"
+            default: this.appConfigService.getMeta(LT_AUTO_CONFIRM_KEY, "true") === "true" || project.getMeta(LT_AUTO_CONFIRM_KEY, "true") === "true"
         });
 
-        project.setMeta(LT_AUTO_CONFIRM_KEY, autoConfirmIP ? "true" : "false");
+        this.appConfigService.setMeta(LT_AUTO_CONFIRM_KEY, autoConfirmIP ? "true" : "false");
+
         project.setMeta(SUBDOMAIN_KEY, subdomain);
+
         project.unsetMeta(LT_SUBDOMAIN_KEY);
+        project.unsetMeta(LT_AUTO_CONFIRM_KEY);
     }
 
-    public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
-        let container = await this.dockerService.getContainer(`localtunnel-${project.name}`);
+    public async start(config: Config, restart?: boolean, rebuild?: boolean): Promise<void> {
+        let container = await this.dockerService.getContainer(config.containerName);
 
         if(container && (restart || rebuild)) {
-            await this.stop(project);
+            await this.stop(config);
 
             container = null;
         }
@@ -48,13 +53,8 @@ export class LocalTunnelService implements ProxyProvider {
         if(!container) {
             await this.build(rebuild);
 
-            const subdomain = project.getMeta(SUBDOMAIN_KEY) || project.getMeta(LT_SUBDOMAIN_KEY, project.name);
-
-            const containerPort = project.getEnv("VIRTUAL_PORT", "80");
-            const host = project.domains[0] || project.containerName;
-
             container = await this.dockerService.createContainer({
-                name: `localtunnel-${project.name}`,
+                name: config.containerName,
                 image: this.imageName,
                 restart: "always",
                 cmd: [
@@ -63,9 +63,9 @@ export class LocalTunnelService implements ProxyProvider {
                     "-c",
                     [
                         "lt",
-                        `--port=${containerPort}`,
-                        `--local-host=${host}`,
-                        `--subdomain=${subdomain}`,
+                        `--port=${config.port}`,
+                        `--local-host=${config.name}`,
+                        ...config.subdomain ? [`--subdomain=${config.subdomain}`] : [],
                         "--print-requests"
                     ].join(" ")
                 ]
@@ -110,7 +110,7 @@ export class LocalTunnelService implements ProxyProvider {
             console.info(`Forwarding: ${link}`);
             console.info(`IP: ${ip}`);
 
-            if(project.getMeta(LT_AUTO_CONFIRM_KEY, "false" as string) === "true") {
+            if(this.appConfigService.getMeta(LT_AUTO_CONFIRM_KEY, "false") === "true") {
                 await this.confirm(link, ip);
             }
         }
@@ -126,8 +126,8 @@ export class LocalTunnelService implements ProxyProvider {
         }
     }
 
-    public async stop(project: Project): Promise<void> {
-        await this.dockerService.removeContainer(`localtunnel-${project.name}`);
+    public async stop(config: Config): Promise<void> {
+        await this.dockerService.removeContainer(config.containerName);
     }
 
     public async build(rebuild?: boolean): Promise<void> {
@@ -147,8 +147,8 @@ export class LocalTunnelService implements ProxyProvider {
         });
     }
 
-    public async logs(project: Project): Promise<void> {
-        const container = await this.dockerService.getContainer(`localtunnel-${project.name}`);
+    public async logs(config: Config): Promise<void> {
+        const container = await this.dockerService.getContainer(`localtunnel-${config.name}`);
 
         if(!container) {
             return;
@@ -204,5 +204,9 @@ export class LocalTunnelService implements ProxyProvider {
                 console.info("IP confirmed");
             }
         }
+    }
+
+    public async getUrl(): Promise<string> {
+        throw new Error("Unsupported");
     }
 }

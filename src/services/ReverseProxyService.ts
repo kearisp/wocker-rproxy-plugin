@@ -1,40 +1,39 @@
-import {Injectable, Project} from "@wocker/core";
-import {promptConfirm, promptSelect} from "@wocker/utils";
-import {ProxyProvider} from "../types/ProxyProvider";
-import {NgrokService} from "../providers/NgrokService";
-import {ServeoService} from "../providers/ServeoService";
-import {LocalTunnelService} from "../providers/LocalTunnelService";
-import {ExposeService} from "../providers/ExposeService";
-import {
-    PROXY_TYPE_KEY,
-    TYPE_SERVEO,
-    TYPE_NGROK,
-    TYPE_LT,
-    TYPE_EXPOSE
-} from "../env";
+import {Injectable, Project, ProjectService, DockerService} from "@wocker/core";
+import {promptSelect} from "@wocker/utils";
+import CliTable from "cli-table3";
+import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
+import {NgrokProvider} from "../providers/NgrokProvider";
+import {ServeoProvider} from "../providers/ServeoProvider";
+import {LocalTunnelProvider} from "../providers/LocalTunnelProvider";
+import {ExposeProvider} from "../providers/ExposeProvider";
+import {ProviderType} from "../types/ProviderType";
+import {PROXY_TYPE_KEY, PROXY_ENABLED, SUBDOMAIN_KEY} from "../env";
+import {Config} from "../makes/Config";
 
 
 @Injectable()
 export class ReverseProxyService {
     public constructor(
-        protected readonly ngrokService: NgrokService,
-        protected readonly serveoService: ServeoService,
-        protected readonly localTunnelService: LocalTunnelService,
-        protected readonly exposeService: ExposeService
+        protected readonly projectService: ProjectService,
+        protected readonly dockerService: DockerService,
+        protected readonly ngrokService: NgrokProvider,
+        protected readonly serveoService: ServeoProvider,
+        protected readonly localTunnelService: LocalTunnelProvider,
+        protected readonly exposeService: ExposeProvider
     ) {}
 
-    public getProvider(type: string): ProxyProvider {
+    public getProvider(type: ProviderType): ReverseProxyProvider {
         switch(type) {
-            case TYPE_LT:
+            case ProviderType.LT:
                 return this.localTunnelService;
 
-            case TYPE_SERVEO:
+            case ProviderType.SERVEO:
                 return this.serveoService;
 
-            case TYPE_NGROK:
+            case ProviderType.NGROK:
                 return this.ngrokService;
 
-            case TYPE_EXPOSE:
+            case ProviderType.EXPOSE:
                 return this.exposeService;
 
             default:
@@ -47,6 +46,10 @@ export class ReverseProxyService {
             return;
         }
 
+        if(project.getMeta(PROXY_ENABLED) === "false") {
+            return;
+        }
+
         await this.start(project);
     }
 
@@ -55,32 +58,26 @@ export class ReverseProxyService {
             return;
         }
 
-        await this.stop(project);
-    }
-
-    public async init(project: Project): Promise<void> {
-        const enabled = await promptConfirm({
-            message: "Enable reverse proxy?",
-            default: !!project.getMeta(PROXY_TYPE_KEY)
-        });
-
-        if(!enabled) {
-            project.unsetMeta(PROXY_TYPE_KEY);
-
-            await project.save();
-
+        if(project.getMeta(PROXY_ENABLED) === "false") {
             return;
         }
 
-        const proxyName = await promptSelect({
+        await this.stop(project);
+    }
+
+    public async enable(project: Project) {
+        project.setMeta(PROXY_ENABLED, "true");
+
+        if(!project.hasMeta(PROXY_TYPE_KEY)) {
+            await this.init(project);
+        }
+    }
+
+    public async init(project: Project): Promise<void> {
+        const proxyName = await promptSelect<ProviderType>({
             message: "Reverse proxy",
             required: true,
-            options: [
-                {label: "Ngrok", value: TYPE_NGROK},
-                {label: "Serveo", value: TYPE_SERVEO},
-                {label: "LocalTunnel", value: TYPE_LT},
-                {label: "Expose (unstable)", value: TYPE_EXPOSE}
-            ],
+            options: ProviderType.options(),
             default: project.getMeta(PROXY_TYPE_KEY)
         });
 
@@ -88,8 +85,9 @@ export class ReverseProxyService {
 
         if(project.getMeta(PROXY_TYPE_KEY)) {
             try {
+                const config = Config.fromProject(project);
                 await this.getProvider(project.getMeta(PROXY_TYPE_KEY))
-                    .stop(project);
+                    .stop(config);
             }
             catch(err) {
                 console.error(err);
@@ -100,23 +98,52 @@ export class ReverseProxyService {
 
         await provider.init(project);
 
-        await project.save();
+        return project.save();
+    }
+
+    public async list() {
+        const projects = this.projectService.search({});
+
+        const table = new CliTable({
+            head: ["Project", "Provider", "Enabled", "Subdomain"]
+        });
+
+        for(const project of projects) {
+            if(!project.hasMeta(PROXY_TYPE_KEY)) {
+                continue;
+            }
+
+            table.push([
+                project.name,
+                ProviderType.getLabel(project.getMeta(PROXY_TYPE_KEY)),
+                project.getMeta(PROXY_ENABLED, "true"),
+                project.getMeta(SUBDOMAIN_KEY, "-")
+            ]);
+        }
+
+        return table.toString();
     }
 
     public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
         console.info("Starting reverse proxy...");
 
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+              config = Config.fromProject(project);
 
-        await provider.start(project, restart, rebuild);
+        await provider.start(config, restart, rebuild);
     }
 
     public async stop(project: Project): Promise<void> {
         console.info("Stopping reverse proxy...");
 
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+              config = Config.fromProject(project);
 
-        await provider.stop(project);
+        await provider.stop(config);
+
+        for(const oldName of config.oldNames) {
+            await this.dockerService.removeContainer(oldName);
+        }
     }
 
     public async build(project: Project, rebuild?: boolean): Promise<void> {
@@ -126,8 +153,16 @@ export class ReverseProxyService {
     }
 
     public async logs(project: Project): Promise<void> {
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+              config = Config.fromProject(project);
 
-        await provider.logs(project);
+        await provider.logs(config);
+    }
+
+    public async url(project: Project) {
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+              config = Config.fromProject(project);
+
+        return provider.getUrl(config);
     }
 }

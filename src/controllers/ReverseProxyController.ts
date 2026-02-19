@@ -4,6 +4,7 @@ import {
     Description,
     Project,
     Command,
+    Param,
     Option,
     AppConfigService,
     EventService,
@@ -11,6 +12,8 @@ import {
     ProjectService
 } from "@wocker/core";
 import {ReverseProxyService} from "../services/ReverseProxyService";
+import {ProviderType} from "../types/ProviderType";
+import {PROXY_ENABLED} from "../env";
 
 
 @Controller()
@@ -41,7 +44,13 @@ export class ReverseProxyController {
     public async init(
         @Option("name", "n")
         @Description("The name of the project")
-        name?: string
+        name?: string,
+        @Option("provider", "p")
+        @Description("Proxy provider")
+        provider?: ProviderType,
+        @Option("subdomain", "s")
+        @Description("Subdomain")
+        subdomain?: string
     ): Promise<void> {
         if(name) {
             await this.projectService.cdProject(name);
@@ -50,6 +59,12 @@ export class ReverseProxyController {
         const project = await this.projectService.get();
 
         await this.reverseProxyService.init(project);
+    }
+
+    @Command("rproxy")
+    @Description("List of reverse proxies")
+    public async list() {
+        return this.reverseProxyService.list();
     }
 
     @Command("rproxy:start")
@@ -104,6 +119,51 @@ export class ReverseProxyController {
         const project = await this.projectService.get();
 
         await this.reverseProxyService.logs(project);
+    }
+
+    @Command("rproxy:url [name]")
+    public async url(
+        @Param("name")
+        @Description("The name of the project")
+        name?: string
+    ) {
+        const project = this.projectService.get(name);
+
+        return this.reverseProxyService.url(project);
+    }
+
+    @Command("rproxy:enable")
+    @Description("Enable reverse proxy for the project")
+    public async enable(
+        @Option("name", "n")
+        @Description("The name of the project")
+        name?: string
+    ): Promise<void> {
+        if(name) {
+            await this.projectService.cdProject(name);
+        }
+
+        const project = await this.projectService.get();
+
+        await this.reverseProxyService.enable(project);
+    }
+
+    @Command("rproxy:disable")
+    @Description("Disable reverse proxy for the project")
+    public async disable(
+        @Option("name", "n")
+        @Description("The name of the project")
+        name?: string
+    ): Promise<void> {
+        if(name) {
+            await this.projectService.cdProject(name);
+        }
+
+        const project = await this.projectService.get();
+
+        project.setMeta(PROXY_ENABLED, "false");
+
+        await project.save();
     }
 
     @Completion("name")
