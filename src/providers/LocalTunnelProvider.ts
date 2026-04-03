@@ -1,5 +1,5 @@
 import {Injectable, Project, DockerService, AppConfigService} from "@wocker/core";
-import {promptInput, promptConfirm} from "@wocker/utils";
+import {promptInput, promptConfirm, demuxOutput} from "@wocker/utils";
 import axios from "axios";
 import * as Path from "path";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
@@ -13,7 +13,15 @@ import {
 
 @Injectable()
 export class LocalTunnelProvider implements ReverseProxyProvider {
-    protected readonly imageName = "ws-localtunnel";
+    public get oldImages(): string[] {
+        return [
+            "ws-localtunnel:latest"
+        ];
+    }
+
+    public get imageName(): string {
+        return "ws-localtunnel:1.0.0";
+    }
 
     public constructor(
         protected readonly appConfigService: AppConfigService,
@@ -42,77 +50,25 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
     }
 
     public async start(config: Config, restart?: boolean, rebuild?: boolean): Promise<void> {
-        let container = await this.dockerService.getContainer(config.containerName);
-
-        if(container && (restart || rebuild)) {
+        if(restart || rebuild) {
             await this.stop(config);
-
-            container = null;
         }
 
-        if(!container) {
-            await this.build(rebuild);
+        await this.build(rebuild);
 
+        let container = await this.dockerService.getContainer(config.containerName);
+
+        if(!container) {
             container = await this.dockerService.createContainer({
                 name: config.containerName,
                 image: this.imageName,
                 restart: "always",
-                cmd: [
-                    "bash",
-                    "-i",
-                    "-c",
-                    [
-                        "lt",
-                        `--port=${config.port}`,
-                        `--local-host=${config.name}`,
-                        ...config.subdomain ? [`--subdomain=${config.subdomain}`] : [],
-                        "--print-requests"
-                    ].join(" ")
-                ]
+                env: {
+                    PORT: config.port,
+                    HOST: config.name,
+                    SUBDOMAIN: config.subdomain || ""
+                }
             });
-
-            const stream = await container.attach({
-                logs: true,
-                stream: true,
-                hijack: true,
-                stdin: true,
-                stderr: true,
-                stdout: true
-            });
-
-            stream.setEncoding("utf8");
-
-            await container.start();
-
-            const link: string = await new Promise((resolve, reject) => {
-                let res = "";
-
-                stream.on("data", (data: any) => {
-                    const regLink = /(https?):\/\/(\w[\w.-]+[a-z]|\d+\.\d+\.\d+\.\d+)(?::(\d+))?/;
-
-                    if(regLink.test(data.toString())) {
-                        const [link = ""] = regLink.exec(data.toString()) || [];
-
-                        if(link.includes(".loca.lt")) {
-                            res = link;
-
-                            stream.end();
-                        }
-                    }
-                });
-
-                stream.on("end", () => resolve(res));
-                stream.on("error", reject);
-            });
-
-            const ip = await this.getIp();
-
-            console.info(`Forwarding: ${link}`);
-            console.info(`IP: ${ip}`);
-
-            if(this.appConfigService.getMeta(LT_AUTO_CONFIRM_KEY, "false") === "true") {
-                await this.confirm(link, ip);
-            }
         }
 
         const {
@@ -122,7 +78,39 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
         } = await container.inspect();
 
         if(!Running) {
+            const stream = await container.attach({
+                logs: true,
+                stream: true,
+                hijack: true,
+                stdin: true,
+                stdout: true,
+                stderr: true
+            });
+
             await container.start();
+
+            await new Promise((resolve, reject) => {
+                stream.on("data", (data: ArrayBuffer) => {
+                    const line = data.toString();
+
+                    if(line.includes("Tunnel started at")) {
+                        stream.end();
+                    }
+                });
+
+                stream.on("end", resolve);
+                stream.on("error", reject);
+            });
+        }
+
+        const link = await this.getUrl(config);
+        const ip = await this.getIp();
+
+        console.info(`Forwarding: ${link}`);
+        console.info(`IP: ${ip}`);
+
+        if(this.appConfigService.getMeta(LT_AUTO_CONFIRM_KEY, "false") === "true") {
+            await this.confirm(link, ip);
         }
     }
 
@@ -131,6 +119,8 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
     }
 
     public async build(rebuild?: boolean): Promise<void> {
+        await this.removeOldImages();
+
         if(await this.dockerService.imageExists(this.imageName)) {
             if(!rebuild) {
                 return;
@@ -141,14 +131,26 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
 
         await this.dockerService.buildImage({
             tag: this.imageName,
-            context: Path.join(__dirname, "../../plugin/localtunnel"),
+            context: Path.join(__dirname, "../../provider/localtunnel"),
             src: "./Dockerfile",
             dockerfile: "./Dockerfile"
         });
     }
 
+    public async removeOldImages(): Promise<void> {
+        const images = await this.dockerService.imageLs({
+            reference: this.oldImages
+        });
+
+        for(const image of images) {
+            const {Id} = image;
+
+            await this.dockerService.imageRm(Id, true);
+        }
+    }
+
     public async logs(config: Config): Promise<void> {
-        const container = await this.dockerService.getContainer(`localtunnel-${config.name}`);
+        const container = await this.dockerService.getContainer(config.containerName);
 
         if(!container) {
             return;
@@ -206,7 +208,48 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
         }
     }
 
-    public async getUrl(): Promise<string> {
-        throw new Error("Unsupported");
+    public async getUrl(config: Config): Promise<string> {
+        const container = await this.dockerService.getContainer(config.containerName);
+
+        if(!container) {
+            return "";
+        }
+
+        const {
+            State: {
+                Running
+            }
+        } = await container.inspect();
+
+        if(!Running) {
+            return "";
+        }
+
+        try {
+            const stream = await this.dockerService.exec(config.containerName, {
+                cmd: ["cat", "/tmp/tunnel.json"]
+            });
+
+            if(!stream) {
+                return "";
+            }
+
+            const data = await new Promise<string>((resolve, reject) => {
+                let res = "";
+
+                stream.on("data", (chunk) => {
+                    res += demuxOutput(chunk).toString();
+                });
+                stream.on("end", () => resolve(res));
+                stream.on("error", reject);
+            });
+
+            const {url} = JSON.parse(data.replace(/[^\x20-\x7E]/g, "").trim());
+
+            return url || "";
+        }
+        catch(err) {
+            return "";
+        }
     }
 }

@@ -75,7 +75,7 @@ export class ExposeProvider implements ReverseProxyProvider {
 
         await this.build(rebuild);
 
-        let container = await this.dockerService.getContainer(`expose-${config.name}`);
+        let container = await this.dockerService.getContainer(config.containerName);
 
         if(!container) {
             container = await this.dockerService.createContainer({
@@ -104,7 +104,7 @@ export class ExposeProvider implements ReverseProxyProvider {
     }
 
     public async stop(config: Config): Promise<void> {
-        await this.dockerService.removeContainer(`expose-${config.name}`);
+        await this.dockerService.removeContainer(config.containerName);
     }
 
     public async build(rebuild?: boolean): Promise<void> {
@@ -118,17 +118,17 @@ export class ExposeProvider implements ReverseProxyProvider {
 
         await this.dockerService.buildImage({
             tag: this.imageName,
-            context: Path.join(__dirname, "../../plugin/expose"),
+            context: Path.join(__dirname, "../../provider/expose"),
             src: "./Dockerfile",
             dockerfile: "./Dockerfile"
         });
     }
 
     public async logs(config: Config): Promise<void> {
-        await this.dockerService.logs(`expose-${config.name}`);
+        await this.dockerService.logs(config.containerName);
     }
 
-    public async getUrl(): Promise<string> {
+    public async getUrl(_config: Config): Promise<string> {
         throw new Error("Unsupported");
     }
 }

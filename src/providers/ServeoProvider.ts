@@ -43,9 +43,9 @@ export class ServeoProvider implements ReverseProxyProvider {
 
     public async init(project: Project): Promise<void> {
         const subdomain = await promptInput({
-            message: "Subdomain: ",
+            message: "Subdomain",
             prefix: "https://",
-            suffix: ".serveo.net",
+            suffix: ".serveousercontent.com",
             default: project.getMeta(SUBDOMAIN_KEY) || project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name)
         });
 
@@ -106,12 +106,9 @@ export class ServeoProvider implements ReverseProxyProvider {
             }
 
             stream.on("data", (data: Buffer): void => {
-                abortController.abort();
-                // console.log("La", data.toString());
-                // stream.emit("end");
-
                 if(/Forwarding HTTP traffic/.test(data.toString())) {
                     // stream.end();
+                    abortController.abort();
                 }
             });
         }
@@ -155,17 +152,17 @@ export class ServeoProvider implements ReverseProxyProvider {
                 GID: (process.getgid ? process.getgid() : 1000).toString(),
                 USER: this.user
             },
-            context: Path.join(__dirname, "../../plugin/serveo"),
+            context: Path.join(__dirname, "../../provider/serveo"),
             src: "./Dockerfile",
             dockerfile: "./Dockerfile"
         });
     }
 
     public async logs(config: Config): Promise<void> {
-        await this.dockerService.logs(`serveo-${config.name}`);
+        await this.dockerService.logs(config.containerName);
     }
 
-    public async getUrl(): Promise<string> {
+    public async getUrl(_config: Config): Promise<string> {
         throw new Error("Unsupported");
     }
 }
