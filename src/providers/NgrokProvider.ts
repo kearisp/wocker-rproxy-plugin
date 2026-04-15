@@ -7,7 +7,8 @@ import {
     PluginConfigService,
     KeystoreService
 } from "@wocker/core";
-import {promptConfirm, promptInput, demuxOutput} from "@wocker/utils";
+import {demuxOutput} from "@wocker/utils";
+import {promptConfirm, promptInput} from "@wocker/prompts";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
 import {Config} from "../makes/Config";
 import {

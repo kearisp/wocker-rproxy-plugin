@@ -1,5 +1,5 @@
 import {Injectable, Project, ProjectService, DockerService} from "@wocker/core";
-import {promptSelect} from "@wocker/utils";
+import {promptConfirm, promptSelect} from "@wocker/prompts";
 import CliTable from "cli-table3";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
 import {NgrokProvider} from "../providers/NgrokProvider";
@@ -41,6 +41,21 @@ export class ReverseProxyService {
         }
     }
 
+    public async onInit(project: Project) {
+        if(!project.hasMeta(PROXY_ENABLED)) {
+            const enable = await promptConfirm({
+                message: "Enable reverse proxy?",
+                default: false
+            });
+
+            project.setMeta(PROXY_ENABLED, enable ? "true" : "false");
+
+            if(enable) {
+                await this.init(project);
+            }
+        }
+    }
+
     public async onStart(project: Project): Promise<void> {
         if(!project || !project.getMeta(PROXY_TYPE_KEY)) {
             return;
@@ -78,7 +93,7 @@ export class ReverseProxyService {
             message: "Reverse proxy",
             required: true,
             options: ProviderType.options(),
-            default: project.getMeta(PROXY_TYPE_KEY)
+            default: project.getMeta(PROXY_TYPE_KEY) as ProviderType
         });
 
         const provider = this.getProvider(proxyName);
@@ -86,7 +101,7 @@ export class ReverseProxyService {
         if(project.getMeta(PROXY_TYPE_KEY)) {
             try {
                 const config = Config.fromProject(project);
-                await this.getProvider(project.getMeta(PROXY_TYPE_KEY))
+                await this.getProvider(project.getMeta(PROXY_TYPE_KEY) as ProviderType)
                     .stop(config);
             }
             catch(err) {
@@ -115,7 +130,7 @@ export class ReverseProxyService {
 
             table.push([
                 project.name,
-                ProviderType.getLabel(project.getMeta(PROXY_TYPE_KEY)),
+                ProviderType.getLabel(project.getMeta(PROXY_TYPE_KEY) as ProviderType),
                 project.getMeta(PROXY_ENABLED, "true"),
                 project.getMeta(SUBDOMAIN_KEY, "-")
             ]);
@@ -127,7 +142,7 @@ export class ReverseProxyService {
     public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
         console.info("Starting reverse proxy...");
 
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY) as ProviderType),
               config = Config.fromProject(project);
 
         await provider.start(config, restart, rebuild);
@@ -136,7 +151,7 @@ export class ReverseProxyService {
     public async stop(project: Project): Promise<void> {
         console.info("Stopping reverse proxy...");
 
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY) as ProviderType),
               config = Config.fromProject(project);
 
         await provider.stop(config);
@@ -147,20 +162,20 @@ export class ReverseProxyService {
     }
 
     public async build(project: Project, rebuild?: boolean): Promise<void> {
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY));
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY) as ProviderType);
 
         await provider.build(rebuild);
     }
 
     public async logs(project: Project): Promise<void> {
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY) as ProviderType),
               config = Config.fromProject(project);
 
         await provider.logs(config);
     }
 
     public async url(project: Project) {
-        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY)),
+        const provider = this.getProvider(project.getMeta(PROXY_TYPE_KEY) as ProviderType),
               config = Config.fromProject(project);
 
         return provider.getUrl(config);

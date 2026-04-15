@@ -1,5 +1,6 @@
 {
     "name": "@wocker/rproxy-plugin",
+    "type": "commonjs",
     "version": "1.0.15",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Wocker reverse proxy plugin",
@@ -26,8 +27,8 @@
     },
     "dependencies": {
         "@wocker/core": "^1.0.25",
-        "@wocker/utils": "^2.0.3",
-        "axios": "^1.8.4",
+        "@wocker/prompts": "^1.0.0",
+        "@wocker/utils": "^2.0.12",
         "cli-table3": "^0.6.5"
     },
     "devDependencies": {

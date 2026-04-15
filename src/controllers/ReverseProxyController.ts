@@ -27,7 +27,7 @@ export class ReverseProxyController {
         protected readonly projectService: ProjectService
     ) {
         this.appEventsService.on("project:init", (project: Project): Promise<void> => {
-            return this.reverseProxyService.init(project);
+            return this.reverseProxyService.onInit(project);
         });
 
         this.appEventsService.on("project:start", (project: Project): Promise<void> => {

@@ -6,7 +6,7 @@ import {
     PluginConfigService,
     FileSystem
 } from "@wocker/core";
-import {promptInput} from "@wocker/utils";
+import {promptInput} from "@wocker/prompts";
 import * as Path from "path";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
 import {Config} from "../makes/Config";

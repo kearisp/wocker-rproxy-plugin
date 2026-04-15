@@ -7,7 +7,7 @@ import {
     FileSystem,
     KeystoreService
 } from "@wocker/core";
-import {promptInput} from "@wocker/utils";
+import {promptInput} from "@wocker/prompts";
 import * as Path from "path";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
 import {Config} from "../makes/Config";
@@ -50,7 +50,7 @@ export class ExposeProvider implements ReverseProxyProvider {
         await this.keystoreService.set(EXPOSE_TOKEN_KEY, token);
 
         const subdomain = await promptInput({
-            message: "Subdomain: ",
+            message: "Subdomain",
             suffix: ".sharedwithexpose.com",
             default: project.getMeta(SUBDOMAIN_KEY, project.name)
         });
@@ -58,7 +58,7 @@ export class ExposeProvider implements ReverseProxyProvider {
         project.setMeta(SUBDOMAIN_KEY, subdomain);
 
         const server = await promptInput({
-            message: "Expose Server: ",
+            message: "Expose Server",
             default: this.appConfigService.getMeta(EXPOSE_SERVER_KEY) || project.getMeta(EXPOSE_SERVER_KEY, "sharedwithexpose.com")
         });
 

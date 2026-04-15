@@ -1,6 +1,6 @@
 import {Injectable, Project, DockerService, AppConfigService} from "@wocker/core";
-import {promptInput, promptConfirm, demuxOutput} from "@wocker/utils";
-import axios from "axios";
+import {demuxOutput, Http} from "@wocker/utils";
+import {promptInput, promptConfirm} from "@wocker/prompts";
 import * as Path from "path";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
 import {Config} from "../makes/Config";
@@ -173,34 +173,33 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
     }
 
     public async getIp(): Promise<string> {
-        const res = await axios.get("https://ipv4.icanhazip.com");
+        const ip = await Http.base("https://ipv4.icanhazip.com")
+            .expectStatus(200)
+            .text();
 
-        return (res.data as string).replace("\n", "");
+        return ip.replace("\n", "");
     }
 
     public async confirm(link: string, ip: string): Promise<void> {
         console.info("Skipping IP confirmation...");
 
-        const res = await axios.get(link, {
+        const client = Http.base(link, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
-            },
-            validateStatus: () => true
+            }
         });
 
-        const [path] = /\/continue\/[\w.]+/.exec(res.data) || [];
+        const pageContent = await client.text();
+
+        const [path] = /\/continue\/[\w.]+/.exec(pageContent) || [];
 
         if(path) {
-            const sendData = new URLSearchParams({
-                endpoint: ip
-            });
-
-            const res = await axios.post(`${link}${path}`, sendData.toString(), {
-                headers: {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36",
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
-                }
-            });
+            const res = await client
+                .withFormUrlEncoded({
+                    endpoint: ip
+                })
+                .post(path)
+                .send();
 
             if(res.status === 200) {
                 console.info("IP confirmed");
