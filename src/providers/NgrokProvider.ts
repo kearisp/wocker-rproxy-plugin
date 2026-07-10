@@ -425,7 +425,10 @@ export class NgrokProvider implements ReverseProxyProvider {
             throw new Error("Container is not started");
         }
 
-        const buffer = await this.dockerService.exec("wocker-proxy", ["curl", "-s", `http://${apiHost}:4040/api/tunnels`]);
+        const buffer = await this.dockerService.exec("wocker-proxy", {
+            attach: false,
+            cmd: ["curl", "-s", `http://${apiHost}:4040/api/tunnels`]
+        });
 
         if(!buffer) {
             return;

@@ -1,6 +1,6 @@
-export const PROXY_TYPE_KEY = "REVERSE_PROXY";
-export const PROXY_ENABLED = "REVERSE_PROXY_ENABLED";
-export const SUBDOMAIN_KEY = "REVERSE_PROXY_SUBDOMAIN";
+export const PROXY_TYPE_KEY = "rproxy.type";
+export const PROXY_AUTOSTART = "rproxy.autostart";
+export const SUBDOMAIN_KEY = "rproxy.subdomain";
 export const SERVEO_SUBDOMAIN_KEY = "SERVEO_SUBDOMAIN";
 export const NGROK_TOKEN_KEY = "NGROK_AUTHTOKEN";
 export const NGROK_SUBDOMAIN_KEY = "NGROK_SUBDOMAIN";

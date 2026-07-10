@@ -7,7 +7,7 @@ import {ServeoProvider} from "../providers/ServeoProvider";
 import {LocalTunnelProvider} from "../providers/LocalTunnelProvider";
 import {ExposeProvider} from "../providers/ExposeProvider";
 import {ProviderType} from "../types/ProviderType";
-import {PROXY_TYPE_KEY, PROXY_ENABLED, SUBDOMAIN_KEY} from "../env";
+import {PROXY_TYPE_KEY, PROXY_AUTOSTART, SUBDOMAIN_KEY} from "../env";
 import {Config} from "../makes/Config";
 
 
@@ -42,26 +42,21 @@ export class ReverseProxyService {
     }
 
     public async onInit(project: Project) {
-        if(!project.hasMeta(PROXY_ENABLED)) {
-            const enable = await promptConfirm({
-                message: "Enable reverse proxy?",
-                default: false
-            });
+        const enabled = await promptConfirm({
+            message: "Enable reverse proxy?",
+            default: false
+        });
 
-            project.setMeta(PROXY_ENABLED, enable ? "true" : "false");
-
-            if(enable) {
-                await this.init(project);
-            }
-        }
-    }
-
-    public async onStart(project: Project): Promise<void> {
-        if(!project || !project.getMeta(PROXY_TYPE_KEY)) {
+        if(!enabled) {
+            project.unsetEnv(PROXY_TYPE_KEY);
             return;
         }
 
-        if(project.getMeta(PROXY_ENABLED) === "false") {
+        await this.init(project);
+    }
+
+    public async onStart(project: Project): Promise<void> {
+        if(!project || !project.getMeta(PROXY_TYPE_KEY) || project.getMeta(PROXY_AUTOSTART) !== "true") {
             return;
         }
 
@@ -69,23 +64,25 @@ export class ReverseProxyService {
     }
 
     public async onStop(project: Project): Promise<void> {
-        if(!project || !project.getMeta(PROXY_TYPE_KEY)) {
-            return;
-        }
-
-        if(project.getMeta(PROXY_ENABLED) === "false") {
+        if(!project || !project.getMeta(PROXY_TYPE_KEY) || project.getMeta(PROXY_AUTOSTART) !== "true") {
             return;
         }
 
         await this.stop(project);
     }
 
-    public async enable(project: Project) {
-        project.setMeta(PROXY_ENABLED, "true");
+    public async enable(project: Project): Promise<void> {
+        project.setMeta(PROXY_AUTOSTART, "true");
 
         if(!project.hasMeta(PROXY_TYPE_KEY)) {
             await this.init(project);
         }
+    }
+
+    public async disable(project: Project) {
+        project.setMeta(PROXY_AUTOSTART, "false");
+
+        project.save();
     }
 
     public async init(project: Project): Promise<void> {
@@ -101,6 +98,7 @@ export class ReverseProxyService {
         if(project.getMeta(PROXY_TYPE_KEY)) {
             try {
                 const config = Config.fromProject(project);
+
                 await this.getProvider(project.getMeta(PROXY_TYPE_KEY) as ProviderType)
                     .stop(config);
             }
@@ -110,6 +108,18 @@ export class ReverseProxyService {
         }
 
         project.setMeta(PROXY_TYPE_KEY, proxyName);
+
+        const autostart = await promptConfirm({
+            message: "Enable autostart?",
+            default: project.getMeta(PROXY_AUTOSTART) === "true"
+        });
+
+        if(autostart) {
+            project.setMeta(PROXY_AUTOSTART, "true");
+        }
+        else {
+            project.unsetMeta(PROXY_AUTOSTART);
+        }
 
         await provider.init(project);
 
@@ -131,7 +141,7 @@ export class ReverseProxyService {
             table.push([
                 project.name,
                 ProviderType.getLabel(project.getMeta(PROXY_TYPE_KEY) as ProviderType),
-                project.getMeta(PROXY_ENABLED, "true"),
+                project.getMeta(PROXY_AUTOSTART, "true"),
                 project.getMeta(SUBDOMAIN_KEY, "-")
             ]);
         }

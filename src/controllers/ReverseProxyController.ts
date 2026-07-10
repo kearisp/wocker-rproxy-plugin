@@ -6,21 +6,20 @@ import {
     Command,
     Param,
     Option,
-    AppConfigService,
+    AppService,
     EventService,
     PluginConfigService,
     ProjectService
 } from "@wocker/core";
 import {ReverseProxyService} from "../services/ReverseProxyService";
 import {ProviderType} from "../types/ProviderType";
-import {PROXY_ENABLED} from "../env";
 
 
 @Controller()
 @Description("Reverse proxy commands")
 export class ReverseProxyController {
     public constructor(
-        protected readonly appConfigService: AppConfigService,
+        protected readonly appService: AppService,
         protected readonly appEventsService: EventService,
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly reverseProxyService: ReverseProxyService,
@@ -161,9 +160,7 @@ export class ReverseProxyController {
 
         const project = await this.projectService.get();
 
-        project.setMeta(PROXY_ENABLED, "false");
-
-        await project.save();
+        await this.reverseProxyService.disable(project);
     }
 
     @Completion("name")
@@ -174,7 +171,7 @@ export class ReverseProxyController {
 
         const {
             projects = []
-        } = this.appConfigService.config;
+        } = this.appService.config;
 
         return projects
             .map((projectData) => projectData.name)
