@@ -19,4 +19,5 @@ RUN apk update && apk add --no-cache bash autossh && \
 USER $USER
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD autossh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -R "${SUBDOMAIN:+$SUBDOMAIN.serveo.net:}80:$CONTAINER:$PORT" serveo.net
+#CMD autossh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -R "${SUBDOMAIN:+$SUBDOMAIN.serveo.net:}80:$CONTAINER:$PORT" serveo.net
+CMD autossh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -R "${SUBDOMAIN:+$SUBDOMAIN:}80:$CONTAINER:$PORT" serveo.net

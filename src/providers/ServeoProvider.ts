@@ -6,14 +6,15 @@ import {
     PluginConfigService,
     FileSystem
 } from "@wocker/core";
-import {promptInput} from "@wocker/utils";
+import {promptInput} from "@wocker/prompts";
 import * as Path from "path";
-import {ProxyProvider} from "../types/ProxyProvider";
+import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
+import {Config} from "../makes/Config";
 import {SERVEO_SUBDOMAIN_KEY, SUBDOMAIN_KEY} from "../env";
 
 
 @Injectable()
-export class ServeoService implements ProxyProvider {
+export class ServeoProvider implements ReverseProxyProvider {
     public constructor(
         protected readonly appConfigService: AppConfigService,
         protected readonly pluginConfigService: PluginConfigService,
@@ -42,9 +43,9 @@ export class ServeoService implements ProxyProvider {
 
     public async init(project: Project): Promise<void> {
         const subdomain = await promptInput({
-            message: "Subdomain: ",
+            message: "Subdomain",
             prefix: "https://",
-            suffix: ".serveo.net",
+            suffix: ".serveousercontent.com",
             default: project.getMeta(SUBDOMAIN_KEY) || project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name)
         });
 
@@ -52,14 +53,14 @@ export class ServeoService implements ProxyProvider {
         project.unsetMeta(SERVEO_SUBDOMAIN_KEY);
     }
 
-    public async start(project: Project, restart?: boolean, rebuild?: boolean): Promise<void> {
+    public async start(config: Config, restart?: boolean, rebuild?: boolean): Promise<void> {
         if(restart || rebuild) {
-            await this.stop(project);
+            await this.stop(config);
         }
 
         await this.build(rebuild);
 
-        let container = await this.dockerService.getContainer(`serveo-${project.name}`);
+        let container = await this.dockerService.getContainer(config.containerName);
 
         if(!container) {
             if(!this.fs.exists(".ssh")) {
@@ -70,14 +71,14 @@ export class ServeoService implements ProxyProvider {
             }
 
             container = await this.dockerService.createContainer({
-                name: `serveo-${project.name}`,
+                name: config.containerName,
                 image: this.imageName,
                 tty: true,
                 restart: "always",
                 env: {
-                    SUBDOMAIN: project.getEnv(SUBDOMAIN_KEY) || project.getMeta(SERVEO_SUBDOMAIN_KEY, project.name),
-                    CONTAINER: project.containerName,
-                    PORT: project.getEnv("VIRTUAL_PORT", "80") as string
+                    SUBDOMAIN: config.subdomain!,
+                    CONTAINER: config.name,
+                    PORT: config.port
                 },
                 volumes: [
                     `${this.fs.path(".ssh")}:/home/${this.user}/.ssh:rw`
@@ -94,7 +95,11 @@ export class ServeoService implements ProxyProvider {
         if(!Running) {
             await container.start();
 
-            const stream = await this.dockerService.attach(container);
+            const abortController = new AbortController();
+
+            const stream = await this.dockerService.logs(container, {
+                signal: abortController.signal
+            });
 
             if(!stream) {
                 return;
@@ -102,14 +107,15 @@ export class ServeoService implements ProxyProvider {
 
             stream.on("data", (data: Buffer): void => {
                 if(/Forwarding HTTP traffic/.test(data.toString())) {
-                    stream.end();
+                    // stream.end();
+                    abortController.abort();
                 }
             });
         }
     }
 
-    public async stop(project: Project): Promise<void> {
-        await this.dockerService.removeContainer(`serveo-${project.name}`);
+    public async stop(config: Config): Promise<void> {
+        await this.dockerService.removeContainer(config.containerName);
     }
 
     public async removeOldImages(): Promise<void> {
@@ -146,13 +152,17 @@ export class ServeoService implements ProxyProvider {
                 GID: (process.getgid ? process.getgid() : 1000).toString(),
                 USER: this.user
             },
-            context: Path.join(__dirname, "../../plugin/serveo"),
+            context: Path.join(__dirname, "../../provider/serveo"),
             src: "./Dockerfile",
             dockerfile: "./Dockerfile"
         });
     }
 
-    public async logs(project: Project): Promise<void> {
-        await this.dockerService.logs(`serveo-${project.name}`);
+    public async logs(config: Config): Promise<void> {
+        await this.dockerService.logs(config.containerName);
+    }
+
+    public async getUrl(_config: Config): Promise<string> {
+        throw new Error("Unsupported");
     }
 }

@@ -6,8 +6,9 @@ import {
 
 export class Config {
     public constructor(
-        protected readonly name: string,
-        protected readonly subdomain?: string
+        public readonly name: string,
+        public readonly port: string,
+        public readonly subdomain?: string
     ) {}
 
     public get containerName(): string {
@@ -25,8 +26,9 @@ export class Config {
 
     public static fromProject(project: Project): Config {
         return new this(
-            project.name,
-            project.getEnv(SUBDOMAIN_KEY)
+            project.containerName,
+            project.getEnv("VIRTUAL_PORT", "80"),
+            project.getMeta(SUBDOMAIN_KEY)
         );
     }
 }
