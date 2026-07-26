@@ -1,13 +1,14 @@
 import {
     Injectable,
-    AppConfigService,
+    AppService,
     DockerService,
     Project,
     ProjectService,
     PluginConfigService,
-    KeystoreService
+    KeystoreService,
+    ProcessService
 } from "@wocker/core";
-import {demuxOutput} from "@wocker/utils";
+import {demuxOutput} from "@wocker/helpers";
 import {promptConfirm, promptInput} from "@wocker/prompts";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
 import {Config} from "../makes/Config";
@@ -25,11 +26,12 @@ export class NgrokProvider implements ReverseProxyProvider {
     public readonly imageName = "ngrok/ngrok:latest";
 
     public constructor(
-        protected readonly appConfigService: AppConfigService,
+        protected readonly appService: AppService,
         protected readonly projectService: ProjectService,
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly dockerService: DockerService,
-        protected readonly keystoreService: KeystoreService
+        protected readonly keystoreService: KeystoreService,
+        protected readonly processService: ProcessService
     ) {}
 
     public get fs() {
@@ -44,7 +46,7 @@ export class NgrokProvider implements ReverseProxyProvider {
         if(!this.pluginConfigService.isVersionGTE("1.0.22")) {
             console.info("Please upgrade @wocker/ws to version 1.0.22 or higher to enable secure key storage using keystore (encrypted file or keytar)");
 
-            this.appConfigService.setMeta(NGROK_TOKEN_KEY, token);
+            this.appService.setMeta(NGROK_TOKEN_KEY, token);
             return;
         }
 
@@ -98,14 +100,14 @@ export class NgrokProvider implements ReverseProxyProvider {
 
         const isBulk = await promptConfirm({
             message: "Run in bulk mode?",
-            default: this.appConfigService.getMeta(NGROK_BULK_KEY, "false") === "true"
+            default: this.appService.getMeta(NGROK_BULK_KEY, "false") === "true"
         });
 
-        this.appConfigService.setMeta(NGROK_BULK_KEY, isBulk ? "true" : "false");
+        this.appService.setMeta(NGROK_BULK_KEY, isBulk ? "true" : "false");
     }
 
     public async start(config: Config, restart?: boolean): Promise<void> {
-        const isBulk = this.appConfigService.getMeta(NGROK_BULK_KEY, "false") === "true";
+        const isBulk = this.appService.getMeta(NGROK_BULK_KEY, "false") === "true";
 
         const container = isBulk
             ? await this.startBulkMode(config, restart)
@@ -156,10 +158,12 @@ export class NgrokProvider implements ReverseProxyProvider {
                 })
             ]);
 
-            process.stdout.write("\n");
+            this.processService.write("\n");
         }
 
-        console.log(await this.getUrl(config));
+        const url = await this.getUrl(config);
+
+        this.processService.write(`${url}\n`);
     }
 
     protected async startSingleMode(config: Config, restart?: boolean) {
@@ -372,7 +376,7 @@ export class NgrokProvider implements ReverseProxyProvider {
     }
 
     public async logs(config: Config): Promise<void> {
-        const isBulk = this.appConfigService.getMeta(NGROK_BULK_KEY, "false") === "true";
+        const isBulk = this.appService.getMeta(NGROK_BULK_KEY, "false") === "true";
 
         const apiHost = isBulk
             ? this.containerName
@@ -413,7 +417,7 @@ export class NgrokProvider implements ReverseProxyProvider {
             throw new Error("Wocker update required");
         }
 
-        const isBulk = this.appConfigService.getMeta(NGROK_BULK_KEY, "false") === "true";
+        const isBulk = this.appService.getMeta(NGROK_BULK_KEY, "false") === "true";
 
         const apiHost = isBulk
             ? this.containerName
@@ -425,13 +429,35 @@ export class NgrokProvider implements ReverseProxyProvider {
             throw new Error("Container is not started");
         }
 
+        const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+
+        const pollInterval = 500;
+        const pollTimeout = 15000;
+
+        let lastError: unknown;
+
+        for(let waited = 0; waited <= pollTimeout; waited += pollInterval) {
+            try {
+                return await this.fetchTunnel(config, apiHost);
+            }
+            catch(err) {
+                lastError = err;
+
+                await sleep(pollInterval);
+            }
+        }
+
+        throw lastError;
+    }
+
+    protected async fetchTunnel(config: Config, apiHost: string): Promise<string> {
         const buffer = await this.dockerService.exec("wocker-proxy", {
             attach: false,
             cmd: ["curl", "-s", `http://${apiHost}:4040/api/tunnels`]
         });
 
         if(!buffer) {
-            return;
+            throw new Error("Tunnel API not ready");
         }
 
         const res = await new Promise<string>((resolve, reject) => {
@@ -446,9 +472,14 @@ export class NgrokProvider implements ReverseProxyProvider {
             });
         });
 
-        const {
-            tunnels
-        } = JSON.parse(res);
+        let tunnels: any[];
+
+        try {
+            ({tunnels} = JSON.parse(res));
+        }
+        catch(err) {
+            throw new Error("Tunnel API not ready");
+        }
 
         const tunnel = tunnels.find((tunnel: any) => {
             return tunnel.config.addr === `http://${config.name}:${config.port}`;
