@@ -3,7 +3,6 @@ import {
     AppService,
     DockerService,
     Project,
-    ProjectService,
     PluginConfigService,
     KeystoreService,
     ProcessService
@@ -27,7 +26,6 @@ export class NgrokProvider implements ReverseProxyProvider {
 
     public constructor(
         protected readonly appService: AppService,
-        protected readonly projectService: ProjectService,
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly dockerService: DockerService,
         protected readonly keystoreService: KeystoreService,
