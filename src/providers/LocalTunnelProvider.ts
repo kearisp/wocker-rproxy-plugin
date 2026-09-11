@@ -1,5 +1,5 @@
 import {Injectable, Project, DockerService, AppConfigService} from "@wocker/core";
-import {demuxOutput, Http} from "@wocker/utils";
+import {demuxOutput, Http} from "@wocker/helpers";
 import {promptInput, promptConfirm} from "@wocker/prompts";
 import * as Path from "path";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
