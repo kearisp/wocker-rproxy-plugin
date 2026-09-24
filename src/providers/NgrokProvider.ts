@@ -198,6 +198,7 @@ export class NgrokProvider implements ReverseProxyProvider {
             name: config.containerName,
             image: this.imageName,
             tty: true,
+            internal: true,
             restart: "always",
             env: {
                 NGROK_AUTHTOKEN: await this.getToken()
@@ -264,6 +265,7 @@ export class NgrokProvider implements ReverseProxyProvider {
             env: {
                 NGROK_AUTHTOKEN: await this.getToken()
             },
+            internal: true,
             labels,
             volumes: [
                 `${this.fs.path("ngrok.yml")}:/etc/ngrok/ngrok.yml`
@@ -353,6 +355,7 @@ export class NgrokProvider implements ReverseProxyProvider {
                     env: {
                         NGROK_AUTHTOKEN: await this.getToken()
                     },
+                    internal: true,
                     labels,
                     volumes: [
                         `${this.fs.path("ngrok.yml")}:/etc/ngrok/ngrok.yml`
