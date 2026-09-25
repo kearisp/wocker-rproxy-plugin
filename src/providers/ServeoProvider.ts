@@ -74,6 +74,7 @@ export class ServeoProvider implements ReverseProxyProvider {
                 name: config.containerName,
                 image: this.imageName,
                 tty: true,
+                internal: true,
                 restart: "always",
                 env: {
                     SUBDOMAIN: config.subdomain!,

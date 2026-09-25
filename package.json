@@ -1,7 +1,7 @@
 {
     "name": "@wocker/rproxy-plugin",
     "type": "commonjs",
-    "version": "1.0.16",
+    "version": "1.0.17",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Wocker reverse proxy plugin",
     "license": "MIT",

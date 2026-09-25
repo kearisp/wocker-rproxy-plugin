@@ -82,6 +82,7 @@ export class ExposeProvider implements ReverseProxyProvider {
                 name: config.containerName,
                 image: this.imageName,
                 tty: true,
+                internal: true,
                 // restart: "always",
                 env: {
                     EXPOSE_TOKEN: await this.keystoreService.get(EXPOSE_TOKEN_KEY) || "",

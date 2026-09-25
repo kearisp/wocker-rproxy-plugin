@@ -67,7 +67,8 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
                     PORT: config.port,
                     HOST: config.name,
                     SUBDOMAIN: config.subdomain || ""
-                }
+                },
+                internal: true
             });
         }
 
