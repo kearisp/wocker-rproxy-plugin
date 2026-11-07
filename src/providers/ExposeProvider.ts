@@ -89,6 +89,9 @@ export class ExposeProvider implements ReverseProxyProvider {
                     EXPOSE_SERVER: this.appConfigService.getMeta(EXPOSE_SERVER_KEY, "sharedwithexpose.com") || "",
                     CONTAINER: config.name,
                     PORT: config.port
+                },
+                labels: {
+                    [config.label]: config.subdomain || ""
                 }
             });
         }
