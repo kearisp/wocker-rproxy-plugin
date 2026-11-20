@@ -68,7 +68,10 @@ export class LocalTunnelProvider implements ReverseProxyProvider {
                     HOST: config.name,
                     SUBDOMAIN: config.subdomain || ""
                 },
-                internal: true
+                internal: true,
+                labels: {
+                    [config.label]: config.subdomain || ""
+                }
             });
         }
 

@@ -24,6 +24,14 @@ export class Config {
         ];
     }
 
+    public get labelPrefix(): string {
+        return `wocker.rproxy.target.${this.name}:`;
+    }
+
+    public get label(): string {
+        return `${this.labelPrefix}${this.port}`;
+    }
+
     public static fromProject(project: Project): Config {
         return new this(
             project.containerName,

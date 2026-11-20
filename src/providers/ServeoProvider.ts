@@ -83,7 +83,10 @@ export class ServeoProvider implements ReverseProxyProvider {
                 },
                 volumes: [
                     `${this.fs.path(".ssh")}:/home/${this.user}/.ssh:rw`
-                ]
+                ],
+                labels: {
+                    [config.label]: config.subdomain || ""
+                }
             });
         }
 

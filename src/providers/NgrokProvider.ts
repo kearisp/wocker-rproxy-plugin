@@ -11,6 +11,7 @@ import {demuxOutput} from "@wocker/helpers";
 import {promptConfirm, promptInput} from "@wocker/prompts";
 import {ReverseProxyProvider} from "../types/ReverseProxyProvider";
 import {Config} from "../makes/Config";
+import {BulkConfig} from "../makes/BulkConfig";
 import {
     SUBDOMAIN_KEY,
     NGROK_SUBDOMAIN_KEY,
@@ -165,18 +166,27 @@ export class NgrokProvider implements ReverseProxyProvider {
     }
 
     protected async startSingleMode(config: Config, restart?: boolean) {
-        const containers = await this.dockerService.listContainer({});
-        const targetLabel = `wocker.rproxy.target.${config.name}:${config.port}`;
+        const containers = [
+            ...await this.dockerService.listContainer({
+                all: true,
+                name: [`/${config.containerName}`, `/ngrok-${config.name}`]
+            }),
+            ...await this.dockerService.listContainer({
+                all: true,
+                label: [config.label]
+            })
+        ];
 
-        // Alternative logic if listContainer could filter by label:
-        // const containers = await this.dockerService.listContainer({
-        //     label: [targetLabel]
-        // });
         const existing = containers.find(c => {
-            if(!c.Labels)
-                return false;
+            if(c.Names[0] === `/${config.containerName}` || c.Names[0] === `/ngrok-${config.name}`) {
+                return true;
+            }
 
-            return Object.keys(c.Labels).some(key => key.startsWith(`wocker.rproxy.target.${config.name}:`));
+            if(!c.Labels) {
+                return false;
+            }
+
+            return Object.keys(c.Labels).some(key => key === config.label);
         });
 
         if(existing) {
@@ -190,29 +200,27 @@ export class NgrokProvider implements ReverseProxyProvider {
             }
         }
 
-        const labels: Record<string, string> = {
-            [targetLabel]: config.subdomain || ""
-        };
-
         return this.dockerService.createContainer({
             name: config.containerName,
             image: this.imageName,
             tty: true,
             internal: true,
             restart: "always",
-            env: {
-                NGROK_AUTHTOKEN: await this.getToken()
-            },
-            labels,
             cmd: (() => {
                 const cmd: string[] = ["http", `${config.name}:${config.port}`];
 
                 if(config.subdomain) {
-                    cmd.push(`--domain=${config.subdomain}.ngrok-free.app`);
+                    cmd.push(`--url=${config.subdomain}.ngrok-free.app`);
                 }
 
                 return cmd;
-            })()
+            })(),
+            labels: {
+                [config.label]: config.subdomain || ""
+            },
+            env: {
+                NGROK_AUTHTOKEN: await this.getToken()
+            }
         });
     }
 
@@ -221,42 +229,43 @@ export class NgrokProvider implements ReverseProxyProvider {
             throw new Error("Please upgrade @wocker/ws to version 1.0.29 or higher to use this plugin");
         }
 
-        const containers = await this.dockerService.listContainer({});
-        // Alternative logic if listContainer could filter by label:
-        // const containers = await this.dockerService.listContainer({
-        //     label: ["wocker.rproxy.bulk=true"]
-        // });
+        const containers = await this.dockerService.listContainer({
+            all: true,
+            label: {
+                "wocker.rproxy.bulk": "true"
+            }
+        });
+
         let containerInfo = containers.find(c => c.Labels && c.Labels["wocker.rproxy.bulk"] === "true");
 
         if(containerInfo && !restart) {
             if(containerInfo.Labels[`wocker.rproxy.target.${config.name}:${config.port}`] === (config.subdomain || "")) {
                 const name = containerInfo.Names[0].replace(/^\//, "");
+
                 return this.dockerService.getContainer(name);
             }
         }
-
-        const targetLabel = `wocker.rproxy.target.${config.name}:${config.port}`;
-        const targetValue = config.subdomain || "";
 
         const labels: Record<string, string> = containerInfo?.Labels || {
             "wocker.rproxy.bulk": "true"
         };
 
-        // Remove old labels for this project name if they exist with different ports
         for(const key of Object.keys(labels)) {
-            if(key.startsWith(`wocker.rproxy.target.${config.name}:`)) {
+            if(key.startsWith(config.labelPrefix)) {
                 delete labels[key];
             }
         }
 
-        labels[targetLabel] = targetValue;
+        labels[config.label] = config.subdomain || "";
 
         if(containerInfo) {
             const name = containerInfo.Names[0].replace(/^\//, "");
             await this.dockerService.removeContainer(name);
         }
 
-        await this.rebuildNgrokConfig(this.parseLabels(labels));
+        const bulkConfig = BulkConfig.fromLabels(labels);
+
+        await this.rebuildNgrokConfig(bulkConfig.configs);
 
         return this.dockerService.createContainer({
             name: this.containerName,
@@ -271,25 +280,6 @@ export class NgrokProvider implements ReverseProxyProvider {
                 `${this.fs.path("ngrok.yml")}:/etc/ngrok/ngrok.yml`
             ]
         });
-    }
-
-    protected parseLabels(labels: Record<string, string>): Config[] {
-        const configs: Config[] = [];
-
-        for(const [key, value] of Object.entries(labels)) {
-            if(key.startsWith("wocker.rproxy.target.")) {
-                const target = key.replace("wocker.rproxy.target.", "");
-                const [name, port] = target.split(":");
-
-                configs.push(new Config(
-                    name,
-                    port,
-                    value || undefined
-                ));
-            }
-        }
-
-        return configs;
     }
 
     protected async rebuildNgrokConfig(configs: Config[]) {
@@ -314,28 +304,42 @@ export class NgrokProvider implements ReverseProxyProvider {
     }
 
     public async stop(config: Config): Promise<void> {
-        const containers = await this.dockerService.listContainer({});
-        const targetPrefix = `wocker.rproxy.target.${config.name}:`;
+        const containers = [
+            ...await this.dockerService.listContainer({
+                all: true,
+                name: [`/${config.containerName}`, `/ngrok-${config.name}`]
+            }),
+            ...await this.dockerService.listContainer({
+                all: true,
+                label: ["wocker.rproxy.bulk"]
+            }),
+            ...await this.dockerService.listContainer({
+                all: true,
+                label: [config.label]
+            })
+        ];
 
-        // Alternative logic if listContainer could filter by label:
-        // const containers = await this.dockerService.listContainer({
-        //     label: [`wocker.rproxy.target.${config.name}`]
-        // });
         const containerInfo = containers.find(c => {
-            if (!c.Labels) return false;
-            return Object.keys(c.Labels).some(key => key.startsWith(targetPrefix) || key === `wocker.rproxy.target.${config.name}`);
+            if(c.Names[0] === `/${config.containerName}` || c.Names[0] === `/ngrok-${config.name}`) {
+                return true;
+            }
+
+            if(!c.Labels) {
+                return false;
+            }
+
+            return Object.keys(c.Labels).some(key => key.startsWith(config.labelPrefix));
         });
 
         if(!containerInfo) {
-            // fallback for old versions or cases where label is missing
-            await this.dockerService.removeContainer(`ngrok-${config.name}`);
             return;
         }
 
         if(containerInfo.Labels["wocker.rproxy.bulk"] === "true") {
             const labels = {...containerInfo.Labels};
-            for (const key of Object.keys(labels)) {
-                if (key.startsWith(targetPrefix) || key === `wocker.rproxy.target.${config.name}`) {
+
+            for(const key of Object.keys(labels)) {
+                if(key.startsWith(config.labelPrefix)) {
                     delete labels[key];
                 }
             }
@@ -343,10 +347,10 @@ export class NgrokProvider implements ReverseProxyProvider {
             const name = containerInfo.Names[0].replace(/^\//, "");
             await this.dockerService.removeContainer(name);
 
-            const configs = this.parseLabels(labels);
+            const bulkConfig = BulkConfig.fromLabels(labels);
 
-            if(configs.length > 0) {
-                await this.rebuildNgrokConfig(configs);
+            if(bulkConfig.configs.length > 0) {
+                await this.rebuildNgrokConfig(bulkConfig.configs);
 
                 const container = await this.dockerService.createContainer({
                     name: this.containerName,
@@ -413,7 +417,7 @@ export class NgrokProvider implements ReverseProxyProvider {
         ]);
     }
 
-    public async getUrl(config: Config) {
+    public async getUrl(config: Config): Promise<string> {
         if(!this.pluginConfigService.isVersionGTE("1.0.29")) {
             throw new Error("Wocker update required");
         }
